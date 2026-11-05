@@ -1,0 +1,46 @@
+name: Project checks
+on: [push, pull_request]
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: mini_lms
+          POSTGRES_PASSWORD: local_demo_only
+          POSTGRES_DB: mini_lms_test_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U mini_lms -d mini_lms_test_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://mini_lms:local_demo_only@localhost:5432/mini_lms_test_ci
+      PYTHONPATH: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install -r backend/requirements.lock.txt
+      - run: alembic upgrade head
+      - run: alembic check
+      - run: python database/seeds/demo_users.py
+      - run: python database/seeds/demo_users.py
+      - run: RUN_DB_TESTS=1 pytest backend/tests -q
+      - run: alembic downgrade base
+      - run: alembic upgrade head
+      - run: alembic check
