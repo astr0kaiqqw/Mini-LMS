@@ -147,3 +147,17 @@ def test_qz11_each_submit_is_a_new_attempt(quiz):
     assert len(listed) == attempts(quiz) == 2
     assert listed[0]["id"] > listed[1]["id"]
 
+
+@pytest.mark.xfail(strict=True, reason="GAP-1: teacher cannot see students' quiz results (QUIZ_TECHNICAL_DESCRIPTION, раздел 7)")
+def test_qz20_teacher_sees_student_quiz_result(quiz):
+    quiz["finish"]()
+    quiz["student"].post(quiz["url"] + "/attempts", json={"answers": quiz["key"]})
+    card = quiz["teacher"].get(f"/api/staff/courses/{quiz['c'].id}/students/{quiz['uid']}").json()
+    assert "quiz" in card
+
+
+@pytest.mark.xfail(strict=True, reason="GAP-2: student gradebook has no quiz result (QUIZ_TECHNICAL_DESCRIPTION, раздел 7)")
+def test_qz21_gradebook_shows_best_quiz_result(quiz):
+    quiz["finish"]()
+    quiz["student"].post(quiz["url"] + "/attempts", json={"answers": quiz["key"]})
+    assert "quiz" in quiz["student"].get("/api/me/gradebook").json()
