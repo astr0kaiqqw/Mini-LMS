@@ -44,3 +44,18 @@
 | Преподаватель курса | Видеть вопросы и ключи ответов | Отправлять попытки; **видеть результаты учеников** (GAP-1) |
 | Администратор | То же на любом курсе | То же |
 
+## 5. Данные
+
+Полная схема и замечания: [ER_DIAGRAM.md](ER_DIAGRAM.md).
+
+```mermaid
+erDiagram
+    courses ||--|{ modules : "состоит из"
+    modules ||--|{ lessons : "состоит из"
+    lessons ||--o| quiz_questions : "1 вопрос"
+    users ||--o{ quiz_attempts : "сдаёт"
+    courses ||--o{ quiz_attempts : "итоговый квиз"
+    users ||--o{ lesson_progress : "проходит"
+    lessons ||--o{ lesson_progress : "отмечен"
+```
+
