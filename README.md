@@ -66,3 +66,5 @@ make up
 Участники: Руслан — БД; Ануар и Ерасыл — backend/frontend; Олжас — требования и описание. Созданный с помощником код не считается автоматически самостоятельным вкладом участника.
 
 Итоговые квизы: [доступ, таблицы и проверки](docs/COURSE_QUIZZES.md). После заполнения курсов запускай `PYTHONPATH=backend python database/seeds/course_quizzes.py`.
+
+Аналитика квизов: [техническое описание](docs/QUIZ_TECHNICAL_DESCRIPTION.md), [ER-диаграмма](docs/ER_DIAGRAM.md), [сценарии приёмки](testing/QUIZ_ACCEPTANCE.md), [задачи](docs/QUIZ_TASKS.md), [отчёт аналитика W11](docs/ANALYSIS_W11_REPORT.md).
