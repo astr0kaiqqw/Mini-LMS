@@ -204,6 +204,10 @@ function App() {
                   <Route path="/courses" element={<Catalog />} />
                   <Route path="/login" element={<Login onLogin={setUser} />} />
                   <Route
+                    path="/register"
+                    element={<Login register onLogin={setUser} />}
+                  />
+                  <Route
                     path="/my"
                     element={
                       <Guard>
@@ -288,15 +292,25 @@ function App() {
     </UserContext.Provider>
   );
 }
-function Login({ onLogin }: { onLogin: (u: Row) => void }) {
+function Login({
+  onLogin,
+  register = false,
+}: {
+  onLogin: (u: Row) => void;
+  register?: boolean;
+}) {
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   return (
     <>
       <Heading
-        title="Рады видеть вас снова."
-        text="Войдите, чтобы открыть свои уроки и результаты."
+        title={register ? "Начните свой маршрут." : "Рады видеть вас снова."}
+        text={
+          register
+            ? "Создайте аккаунт ученика и запишитесь на курс."
+            : "Войдите, чтобы открыть свои уроки и результаты."
+        }
       />
       <form
         className="panel auth"
@@ -304,15 +318,12 @@ function Login({ onLogin }: { onLogin: (u: Row) => void }) {
           e.preventDefault();
           setBusy(true);
           setError("");
-          const f = new FormData(e.currentTarget);
+          const f = Object.fromEntries(new FormData(e.currentTarget));
           try {
             onLogin(
-              await api("/auth/login", "POST", {
-                email: f.get("email"),
-                password: f.get("password"),
-              }),
+              await api(register ? "/auth/register" : "/auth/login", "POST", f),
             );
-            navigate("/my");
+            navigate(register ? "/courses" : "/my");
           } catch (e) {
             setError((e as Error).message);
           } finally {
@@ -320,6 +331,17 @@ function Login({ onLogin }: { onLogin: (u: Row) => void }) {
           }
         }}
       >
+        {register && (
+          <label>
+            Имя
+            <input
+              name="display_name"
+              maxLength={100}
+              autoComplete="name"
+              required
+            />
+          </label>
+        )}
         <label>
           Email
           <input name="email" type="email" autoComplete="username" required />
@@ -329,18 +351,18 @@ function Login({ onLogin }: { onLogin: (u: Row) => void }) {
           <input
             name="password"
             type="password"
-            autoComplete="current-password"
+            minLength={register ? 8 : undefined}
+            autoComplete={register ? "new-password" : "current-password"}
             required
           />
         </label>
         <button className="button" disabled={busy}>
-          {busy ? "Входим…" : "Войти"}
+          {busy ? "Отправляем…" : register ? "Создать аккаунт" : "Войти"}
         </button>
         {error && <p role="alert">{error}</p>}
-        <p className="micro">
-          Самостоятельная регистрация пока не подключена. Используйте выданный
-          учебный аккаунт.
-        </p>
+        <Link to={register ? "/login" : "/register"}>
+          {register ? "Уже есть аккаунт? Войти" : "Создать аккаунт"} →
+        </Link>
       </form>
     </>
   );
@@ -408,12 +430,34 @@ function MyCourses() {
     </>
   );
 }
+function Enroll({ courseId, onDone }: { courseId: string; onDone: () => void }) {
+  const [error, setError] = useState("");
+  return (
+    <section className="panel">
+      <button
+        className="button"
+        onClick={() =>
+          api(`/courses/${courseId}/enroll`, "POST")
+            .then(onDone)
+            .catch((e) => setError(e.message))
+        }
+      >
+        Записаться на курс
+      </button>
+      {error && <p role="alert">{error}</p>}
+    </section>
+  );
+}
 function CourseView() {
-  const { courseId } = useParams();
-  const { data: c, error } = useLoad("/courses/" + courseId);
+  const { courseId = "" } = useParams();
+  const { data: c, error, reload } = useLoad("/courses/" + courseId);
+  const user = useContext(UserContext);
   return (
     <>
       <State data={c} error={error} />
+      {error && user?.role === "student" && (
+        <Enroll courseId={courseId} onDone={reload} />
+      )}
       {c && (
         <>
           <Heading title={c.title} text={c.description} />
@@ -1339,20 +1383,36 @@ function LessonEditor({
   );
 }
 function Admin() {
-  const { data, error } = useLoad("/admin/users");
+  const { data, error, reload } = useLoad("/admin/users");
+  const me = useContext(UserContext);
+  const [saveError, setSaveError] = useState("");
   return (
     <>
       <Heading
         title="Пользователи"
-        text="Учётные записи и роли. Повышение роли через профиль запрещено."
+        text="Учётные записи и роли. Свою роль изменить нельзя."
       />
       <State data={data} error={error} />
+      {saveError && <p role="alert">{saveError}</p>}
       {data?.map((u: Row) => (
         <div className="lesson-row" key={u.id}>
           <strong>{u.display_name}</strong>
-          <span>
-            {u.email} · {u.role}
-          </span>
+          <span>{u.email}</span>
+          <select
+            aria-label={`Роль ${u.email}`}
+            value={u.role}
+            disabled={u.id === me?.id}
+            onChange={(e) => {
+              setSaveError("");
+              api(`/admin/users/${u.id}/role`, "PUT", { role: e.target.value })
+                .then(reload)
+                .catch((err) => setSaveError(err.message));
+            }}
+          >
+            <option value="student">student</option>
+            <option value="teacher">teacher</option>
+            <option value="admin">admin</option>
+          </select>
         </div>
       ))}
     </>

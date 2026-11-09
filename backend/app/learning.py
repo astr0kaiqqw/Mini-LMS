@@ -132,6 +132,10 @@ def login(data: Login, response: Response, s: Session = Depends(db)):
     )
     if not valid:
         raise HTTPException(401, "Неверный email или пароль")
+    return start_session(s, response, user)
+
+
+def start_session(s, response, user):
     token = secrets.token_urlsafe(32)
     s.add(
         LoginSession(
@@ -149,6 +153,28 @@ def login(data: Login, response: Response, s: Session = Depends(db)):
         max_age=604800,
     )
     return user_dict(s, user)
+
+
+class Register(Login):
+    email: str = Field(max_length=254, pattern=r"^\s*[^@\s]+@[^@\s]+\s*$")
+    display_name: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=8, max_length=200)
+
+
+@router.post("/auth/register", status_code=201)
+def register(data: Register, response: Response, s: Session = Depends(db)):
+    email, name = data.email.strip().lower(), data.display_name.strip()
+    if not name:
+        raise HTTPException(422, "Укажите имя")
+    if s.scalar(select(User.id).where(User.email == email)):
+        raise HTTPException(409, "Этот email уже зарегистрирован")
+    student = s.scalar(select(Role.id).where(Role.name == "student"))
+    user = User(email=email, display_name=name, role_id=student)
+    s.add(user)
+    s.flush()
+    s.add(Credential(user_id=user.id, password_hash=hash_password(data.password)))
+    s.add(UserProfile(user_id=user.id))
+    return start_session(s, response, user)
 
 
 @router.post("/auth/logout")
@@ -278,6 +304,19 @@ def course_detail(course_id: int, user=Depends(current), s: Session = Depends(db
         for l in lessons_for(s, c.id)
     ]
     return result
+
+
+@router.post("/courses/{course_id}/enroll")
+def enroll(course_id: int, user=Depends(current), s: Session = Depends(db)):
+    course = s.get(Course, course_id)
+    if not course or course.status != "published":
+        raise HTTPException(404, "Курс не найден")
+    s.execute(
+        insert(Enrollment)
+        .values(user_id=user.id, course_id=course_id)
+        .on_conflict_do_nothing()
+    )
+    return {"enrolled": True}
 
 
 @router.get("/lessons/{lesson_id}")
@@ -697,6 +736,26 @@ def admin_users(user=Depends(staff), s: Session = Depends(db)):
     if role(s, user) != "admin":
         raise HTTPException(403, "Только администратор")
     return [user_dict(s, u) for u in s.scalars(select(User).order_by(User.id))]
+
+
+class RoleInput(Strict):
+    role: Literal["student", "teacher", "admin"]
+
+
+@router.put("/admin/users/{user_id}/role")
+def set_role(
+    user_id: int, data: RoleInput, user=Depends(staff), s: Session = Depends(db)
+):
+    if role(s, user) != "admin":
+        raise HTTPException(403, "Только администратор")
+    if user_id == user.id:
+        raise HTTPException(403, "Нельзя менять собственную роль")
+    target = s.get(User, user_id)
+    if not target:
+        raise HTTPException(404, "Пользователь не найден")
+    target.role_id = s.scalar(select(Role.id).where(Role.name == data.role))
+    s.flush()
+    return user_dict(s, target)
 
 
 # Answer keys are serialized only for authorized course staff.

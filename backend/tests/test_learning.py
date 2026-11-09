@@ -381,3 +381,51 @@ def test_lesson_permissions_and_video_constraint(env):
                 )
             )
             s.flush()
+
+
+def test_register_creates_student_session(env):
+    s, _ = env
+    client = TestClient(app)
+    email = f"new-{uuid.uuid4().hex[:8]}@example.test"
+    body = {"email": f" {email.upper()} ", "display_name": "Новый", "password": "Secret123"}
+    r = client.post("/api/auth/register", json=body)
+    assert r.status_code == 201, r.text
+    assert r.json()["email"] == email and r.json()["role"] == "student"
+    assert client.get("/api/me").json()["email"] == email
+    assert TestClient(app).post("/api/auth/register", json=body).status_code == 409
+    assert TestClient(app).post("/api/auth/login", json={"email": email, "password": "Secret123"}).status_code == 200
+    bad = (
+        {**body, "email": "x" + email, "password": "short"},
+        {**body, "email": "no-at-sign"},
+        {**body, "email": "y" + email, "role": "admin"},
+    )
+    for payload in bad:
+        assert TestClient(app).post("/api/auth/register", json=payload).status_code == 422
+
+
+def test_enroll_is_idempotent_and_opens_course(env):
+    s, login = env
+    client = login("calculus-1.student1@demo.example.test")
+    english = course(s, "english")
+    assert client.get(f"/api/courses/{english.id}").status_code == 403
+    assert client.post(f"/api/courses/{english.id}/enroll").status_code == 200
+    assert client.post(f"/api/courses/{english.id}/enroll").status_code == 200
+    assert client.get(f"/api/courses/{english.id}").status_code == 200
+    user_id = client.get("/api/me").json()["id"]
+    count = select(func.count()).select_from(Enrollment).where(Enrollment.user_id == user_id, Enrollment.course_id == english.id)
+    assert s.scalar(count) == 1
+    assert client.post("/api/courses/999999/enroll").status_code == 404
+    assert TestClient(app).post(f"/api/courses/{english.id}/enroll").status_code == 401
+
+
+def test_admin_changes_roles_but_not_own(env):
+    s, login = env
+    admin = login("administrator@demo.example.test")
+    student = login("calculus-1.student1@demo.example.test")
+    sid, aid = student.get("/api/me").json()["id"], admin.get("/api/me").json()["id"]
+    assert student.put(f"/api/admin/users/{sid}/role", json={"role": "admin"}).status_code == 403
+    assert admin.put(f"/api/admin/users/{aid}/role", json={"role": "student"}).status_code == 403
+    assert admin.put(f"/api/admin/users/{sid}/role", json={"role": "superuser"}).status_code == 422
+    assert admin.put("/api/admin/users/999999/role", json={"role": "teacher"}).status_code == 404
+    assert admin.put(f"/api/admin/users/{sid}/role", json={"role": "teacher"}).json()["role"] == "teacher"
+    assert student.get("/api/staff/courses").status_code == 200
