@@ -1,71 +1,1364 @@
-import React, { useEffect, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Link, NavLink, Route, Routes, useParams } from 'react-router-dom';
-import { courses, lessons, Role, roleNames } from './demo';
-import './styles.css';
-
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  createContext,
+  useContext,
+} from "react";
+import { createRoot } from "react-dom/client";
+import {
+  BrowserRouter,
+  Link,
+  NavLink,
+  Routes,
+  Route,
+  useParams,
+  useNavigate,
+} from "react-router-dom";
+import "./styles.css";
+import "./learning.css";
+type Row = Record<string, any>;
+async function api(path: string, method = "GET", body?: unknown) {
+  const r = await fetch("/api" + path, {
+    method,
+    credentials: "same-origin",
+    keepalive: path.endsWith("/watch"),
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const d = await r
+    .json()
+    .catch(() => ({ detail: "Некорректный ответ сервера" }));
+  if (!r.ok)
+    throw Error(
+      typeof d.detail === "string" ? d.detail : "Проверьте поля формы",
+    );
+  return d;
+}
+function useLoad(path: string | null) {
+  const [data, setData] = useState<any>(null),
+    [error, setError] = useState(""),
+    [v, setV] = useState(0);
+  useEffect(() => {
+    let active = true;
+    if (!path) {
+      setData(null);
+      setError("");
+      return;
+    }
+    setData(null);
+    setError("");
+    api(path)
+      .then((d) => {
+        if (active) setData(d);
+      })
+      .catch((e) => {
+        if (active) setError(e.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [path, v]);
+  return { data, error, reload: () => setV((x) => x + 1) };
+}
+const UserContext = createContext<Row | null>(null);
+function Heading({ title, text = "" }: { title: string; text?: string }) {
+  return (
+    <div className="page-heading">
+      <span className="eyebrow">УЧЕБНАЯ МАСТЕРСКАЯ</span>
+      <h1>{title}</h1>
+      <p>{text}</p>
+    </div>
+  );
+}
+function State({ data, error }: { data: any; error: string }) {
+  return error ? (
+    <p className="notice" role="alert">
+      {error}
+    </p>
+  ) : data === null ? (
+    <p role="status">Загрузка…</p>
+  ) : null;
+}
+function DateText({ value }: { value: any }) {
+  return (
+    <>{value ? new Date(value).toLocaleString("ru-RU") : "Нет активности"}</>
+  );
+}
+function Progress({ p }: { p: Row }) {
+  return (
+    <>
+      <strong>
+        {p.completed} / {p.total} уроков · {p.percent}%
+      </strong>
+      <progress value={p.percent} max={100} />
+      {p.demo && <small className="pill">Тестовые показатели</small>}
+    </>
+  );
+}
+function Denied() {
+  return (
+    <section className="panel">
+      <h2>Нет доступа</h2>
+      <p>Войдите под пользователем с нужными правами.</p>
+      <Link to="/login">Войти →</Link>
+    </section>
+  );
+}
+function Guard({
+  children,
+  staff = false,
+}: {
+  children: React.ReactNode;
+  staff?: boolean;
+}) {
+  const u = useContext(UserContext);
+  return !u || (staff && !["teacher", "admin"].includes(u.role)) ? (
+    <Denied />
+  ) : (
+    <>{children}</>
+  );
+}
 function App() {
-  const [role, setRole] = useState<Role>('student');
-  const [notice, setNotice] = useState('');
-  return <BrowserRouter><div className="shell">
-    <aside className="sidebar"><Link className="brand" to="/"><span className="brand-icon">м.</span><span>Mini LMS<small>учебная мастерская</small></span></Link>
-      <p className="nav-label">МОЁ ПРОСТРАНСТВО</p><nav aria-label="Основная навигация">
-        <NavLink to="/" end><span>◫</span>Обзор</NavLink><NavLink to="/courses"><span>▦</span>Курсы</NavLink><NavLink to="/assignments"><span>☷</span>Практика</NavLink><NavLink to="/profile"><span>○</span>Мой профиль</NavLink>
-        {role === 'teacher' && <NavLink to="/teacher"><span>◇</span>Мастерская преподавателя</NavLink>}
-        {role === 'admin' && <NavLink to="/admin"><span>⚙</span>Управление</NavLink>}
-      </nav><div className="sidebar-bottom"><div className="week-card"><span className="eyebrow">В РАЗРАБОТКЕ</span><strong>Маленькие шаги.<br/>Видимый результат.</strong><p>Каркас проекта · неделя 10</p><Link to="/roadmap">Что появится дальше ↗</Link></div>
-      <label className="role-label" htmlFor="role">Посмотреть глазами</label><select id="role" value={role} onChange={e => {setRole(e.target.value as Role);setNotice('');}}>{Object.entries(roleNames).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><p className="micro">Переключение макета, без авторизации</p></div>
-    </aside>
-    <div className="workspace"><header className="topbar"><span>Пространство для новых знаний</span><div><span className="demo-badge"><i/> Демо-режим</span><Link to="/login" className="avatar" aria-label="Открыть вход">Р</Link></div></header>
-      <main>{notice && <div role="status" className="notice">{notice}<button aria-label="Закрыть уведомление" onClick={() => setNotice('')}>×</button></div>}
-        <Routes>
-          <Route path="/" element={<Dashboard role={role}/>}/><Route path="/courses" element={<Catalog/>}/>
-          <Route path="/courses/:courseId" element={<Course/>}/><Route path="/courses/:courseId/lessons/:lessonId" element={<Lesson onNotice={setNotice}/>}/>
-          <Route path="/assignments" element={<Assignments/>}/><Route path="/quiz" element={<Quiz/>}/><Route path="/profile" element={<Profile role={role}/>}/>
-          <Route path="/login" element={<Auth register={false}/>}/><Route path="/register" element={<Auth register/>}/>
-          <Route path="/teacher" element={role === 'teacher' ? <Staff/> : <AccessDenied/>}/>
-          <Route path="/admin" element={role === 'admin' ? <Admin/> : <AccessDenied/>}/>
-          <Route path="/roadmap" element={<Roadmap/>}/><Route path="*" element={<NotFound/>}/>
-        </Routes>
-      </main><footer>Mini LMS · Учебная мастерская <span>Данные и результаты на экранах — примеры, без сохранения.</span></footer>
-    </div></div></BrowserRouter>;
+  const [user, setUser] = useState<Row | null>(null),
+    [ready, setReady] = useState(false),
+    [error, setError] = useState("");
+  useEffect(() => {
+    api("/me")
+      .then(setUser)
+      .catch(() => {})
+      .finally(() => setReady(true));
+  }, []);
+  const teacher = user && ["teacher", "admin"].includes(user.role);
+  return (
+    <UserContext.Provider value={user}>
+      <BrowserRouter>
+        <div className="shell">
+          <aside className="sidebar">
+            <Link className="brand" to="/">
+              <span className="brand-icon">м.</span>
+              <span>
+                Mini LMS<small>учебная мастерская</small>
+              </span>
+            </Link>
+            <p className="nav-label">МОЁ ПРОСТРАНСТВО</p>
+            <nav>
+              <NavLink to="/courses">Курсы</NavLink>
+              {user && (
+                <>
+                  <NavLink to="/my">Моё обучение</NavLink>
+                  <NavLink to="/grades">Мои оценки</NavLink>
+                  <NavLink to="/profile">Профиль</NavLink>
+                </>
+              )}
+              {teacher && (
+                <>
+                  <NavLink to="/teacher">Материалы</NavLink>
+                  <NavLink to="/teacher/students">Ученики</NavLink>
+                  <NavLink to="/teacher/grades">Оценки</NavLink>
+                </>
+              )}
+              {user?.role === "admin" && (
+                <NavLink to="/admin">Пользователи</NavLink>
+              )}
+            </nav>
+            <div className="sidebar-bottom">
+              <p>
+                {user
+                  ? `${user.display_name} · ${user.role}`
+                  : "Каталог открыт для всех"}
+              </p>
+              {user ? (
+                <button
+                  className="button secondary"
+                  onClick={async () => {
+                    try {
+                      await api("/auth/logout", "POST");
+                      setUser(null);
+                    } catch (e) {
+                      setError((e as Error).message);
+                    }
+                  }}
+                >
+                  Выйти
+                </button>
+              ) : (
+                <Link className="button" to="/login">
+                  Войти
+                </Link>
+              )}
+            </div>
+          </aside>
+          <div className="workspace">
+            <header className="topbar">
+              <span>Пространство для новых знаний</span>
+              <span className="pill">PostgreSQL · учебные данные</span>
+            </header>
+            <main>
+              {error && <p role="alert">{error}</p>}
+              {!ready ? (
+                <p>Проверяем сессию…</p>
+              ) : (
+                <Routes>
+                  <Route path="/" element={<Catalog />} />
+                  <Route path="/courses" element={<Catalog />} />
+                  <Route path="/login" element={<Login onLogin={setUser} />} />
+                  <Route
+                    path="/my"
+                    element={
+                      <Guard>
+                        <MyCourses />
+                      </Guard>
+                    }
+                  />
+                  <Route
+                    path="/courses/:courseId"
+                    element={
+                      <Guard>
+                        <CourseView />
+                      </Guard>
+                    }
+                  />
+                  <Route
+                    path="/courses/:courseId/lessons/:lessonId"
+                    element={
+                      <Guard>
+                        <LessonView />
+                      </Guard>
+                    }
+                  />
+                  <Route
+                    path="/grades"
+                    element={
+                      <Guard>
+                        <OwnGrades />
+                      </Guard>
+                    }
+                  />
+                  <Route
+                    path="/profile"
+                    element={
+                      <Guard>
+                        <Profile onChange={setUser} />
+                      </Guard>
+                    }
+                  />
+                  <Route
+                    path="/teacher"
+                    element={
+                      <Guard staff>
+                        <Materials />
+                      </Guard>
+                    }
+                  />
+                  <Route
+                    path="/teacher/students"
+                    element={
+                      <Guard staff>
+                        <Students />
+                      </Guard>
+                    }
+                  />
+                  <Route
+                    path="/teacher/grades"
+                    element={
+                      <Guard staff>
+                        <TeacherGrades />
+                      </Guard>
+                    }
+                  />
+                  <Route
+                    path="/admin"
+                    element={user?.role === "admin" ? <Admin /> : <Denied />}
+                  />
+                  <Route
+                    path="*"
+                    element={<Heading title="Страница не найдена" />}
+                  />
+                </Routes>
+              )}
+            </main>
+            <footer>
+              Mini LMS · Учебная мастерская{" "}
+              <span>Результаты сохраняются. Тестовые записи подписаны.</span>
+            </footer>
+          </div>
+        </div>
+      </BrowserRouter>
+    </UserContext.Provider>
+  );
 }
-function Heading({tag, title, text}: {tag:string;title:string;text:string}) {return <div className="page-heading"><span className="eyebrow">{tag}</span><h1>{title}</h1><p>{text}</p></div>;}
-function CourseCard({course}: {course:typeof courses[number]}) {return <Link className="course-card" to={`/courses/${course.id}`}><div className={`course-art ${course.color}`} aria-hidden="true"><span className="art-grid"/><b>{course.id === 'data-thinking' ? '01 / ∑' : course.id === 'web-lab' ? '< / >' : '→ + ↗'}</b><span className="art-label">УЧЕБНАЯ СЕРИЯ</span></div><div className="course-body"><span className="eyebrow">{course.category}</span><h3>{course.title}</h3><p>{course.summary}</p><div className="course-meta"><span>{course.lessons} уроков · {course.duration}</span><span>↗</span></div></div></Link>;}
-function Dashboard({role}:{role:Role}) {return <><Heading tag="ВАШ УЧЕБНЫЙ МАРШРУТ" title={role === 'student' ? 'Хороший день, чтобы разобраться.' : 'Знания начинаются с хорошего плана.'} text="Одна новая идея, немного практики — и ещё один шаг вперёд."/>
-  <section className="hero"><div><span className="eyebrow">ПРОДОЛЖИТЬ ЗНАКОМСТВО</span><h2>Большие идеи<br/>начинаются с данных.</h2><p>Разберитесь, как устроены сущности и связи,<br/>на простых примерах из жизни.</p><Link className="button light" to="/courses/data-thinking/lessons/1">Открыть демо-урок <span>↗</span></Link></div><div className="hero-visual" aria-hidden="true"><div className="orbit"/><div className="shape one">ДАННЫЕ</div><div className="shape two">СВЯЗИ</div><div className="shape three">ИДЕЯ ↗</div><span className="spark">✳</span></div></section>
-  <div className="stats"><div><span className="stat-icon mint">▦</span><div><strong>3</strong><span>курса для знакомства</span></div></div><div><span className="stat-icon peach">↗</span><div><strong>19</strong><span>уроков в демо-каталоге</span></div></div><div><span className="stat-icon lavender">◇</span><div><strong>11–15</strong><span>недели развития проекта</span></div></div></div>
-  <section><div className="section-title"><div><span className="eyebrow">ВЫБЕРИТЕ НАПРАВЛЕНИЕ</span><h2>Есть с чего начать</h2></div><Link to="/courses">Все курсы ↗</Link></div><div className="course-grid">{courses.map(course => <CourseCard course={course} key={course.id}/>)}</div></section>
-  <div className="bottom-grid"><section className="panel"><span className="eyebrow">ОТ ТЕОРИИ К ДЕЛУ</span><h2>Попробуйте себя</h2><p>Посмотрите макет теста о данных. Настоящие попытки и оценки появятся на неделе 13.</p><Link className="text-link" to="/quiz">Открыть пример теста →</Link></section><section className="panel warm"><span className="eyebrow">СОЗДАЁМ ВМЕСТЕ</span><h2>Проект растёт по неделям</h2><p>У каждого шага есть автор, проверяемый результат и место в общем плане.</p><Link className="text-link" to="/roadmap">Посмотреть маршрут проекта →</Link></section></div>
-</>;}
+function Login({ onLogin }: { onLogin: (u: Row) => void }) {
+  const [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
+  return (
+    <>
+      <Heading
+        title="Рады видеть вас снова."
+        text="Войдите, чтобы открыть свои уроки и результаты."
+      />
+      <form
+        className="panel auth"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          setError("");
+          const f = new FormData(e.currentTarget);
+          try {
+            onLogin(
+              await api("/auth/login", "POST", {
+                email: f.get("email"),
+                password: f.get("password"),
+              }),
+            );
+            navigate("/my");
+          } catch (e) {
+            setError((e as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <label>
+          Email
+          <input name="email" type="email" autoComplete="username" required />
+        </label>
+        <label>
+          Пароль
+          <input
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+          />
+        </label>
+        <button className="button" disabled={busy}>
+          {busy ? "Входим…" : "Войти"}
+        </button>
+        {error && <p role="alert">{error}</p>}
+        <p className="micro">
+          Самостоятельная регистрация пока не подключена. Используйте выданный
+          учебный аккаунт.
+        </p>
+      </form>
+    </>
+  );
+}
 function Catalog() {
-  const [search,setSearch] = useState(''); const [category,setCategory] = useState('Все');
-  const [api,setApi] = useState('Проверяем demo API…');
-  useEffect(() => {const controller = new AbortController(); fetch('/api/demo/courses',{signal:controller.signal}).then(r=>{if(!r.ok)throw Error();return r.json();}).then(data=>setApi(data.mode === 'demo' ? `Demo API доступен · ${data.items.length} курса. Ниже локальные примеры.` : 'Ниже локальные примеры.')).catch(()=>{if(!controller.signal.aborted)setApi('Backend недоступен · показаны локальные примеры.');});return ()=>controller.abort();},[]);
-  // TODO(W12, Ануар): CONTENT-02 — заменить локальные карточки загрузкой опубликованных курсов с поиском и состояниями API.
-  const filtered = courses.filter(c=>(category==='Все'||c.category===category)&&`${c.title} ${c.summary}`.toLowerCase().includes(search.toLowerCase()));
-  return <><Heading tag="КАТАЛОГ" title="Найдите свою следующую идею." text="Три направления, чтобы познакомиться с мастерской."/><div className="toolbar"><label className="search">Поиск курса<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Например, данные" type="search"/></label><div className="tabs">{['Все','Аналитика','Разработка','Практика'].map(c=><button key={c} aria-pressed={category===c} className={category===c?'active':''} onClick={()=>setCategory(c)}>{c}</button>)}</div></div><p className="micro" role="status">{api}</p><div className="course-grid">{filtered.map(c=><CourseCard key={c.id} course={c}/>)}</div>{!filtered.length&&<div className="panel">Курсов не найдено. Попробуйте другой запрос.</div>}</>;
+  const { data, error } = useLoad("/courses");
+  const [q, setQ] = useState("");
+  const filtered = data?.filter((c: Row) =>
+    c.title.toLowerCase().includes(q.toLowerCase()),
+  );
+  return (
+    <>
+      <Heading
+        title="Найдите свою следующую идею."
+        text="Опубликованные курсы. Уроки доступны после входа и зачисления."
+      />
+      <label className="search">
+        Поиск курса
+        <input value={q} onChange={(e) => setQ(e.target.value)} type="search" />
+      </label>
+      <State data={data} error={error} />
+      <div className="course-grid">
+        {filtered?.map((c: Row, i: number) => (
+          <Link className="course-card" key={c.id} to={`/courses/${c.id}`}>
+            <div
+              className={"course-art " + ["mint", "peach", "lavender"][i % 3]}
+            >
+              <b>{String(i + 1).padStart(2, "0")} / ↗</b>
+            </div>
+            <div className="course-body">
+              <span className="eyebrow">
+                {c.lessons} уроков · {c.teacher}
+              </span>
+              <h3>{c.title}</h3>
+              <p>{c.description}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
+      {filtered?.length === 0 && <p>Курсов не найдено.</p>}
+    </>
+  );
 }
-// TODO(W13, Ануар): ENROLL-01 — подключить запись на курс и серверную проверку доступа.
-function Course() {const {courseId}=useParams();const c=courses.find(c=>c.id===courseId);if(!c)return <NotFound/>;return <><Link className="back" to="/courses">← Каталог</Link><Heading tag={c.category} title={c.title} text={c.summary}/><div className="detail-grid"><section className="panel"><h2>Маршрут курса</h2><p>Пример структуры. Пока доступен один ознакомительный урок.</p>{(c.id==='data-thinking'?lessons:Array.from({length:c.lessons},(_,i)=>i===0?'Знакомство с направлением':`Учебный блок ${i+1}`)).map((l,i)=><div className="lesson-row" key={l}><span className="lesson-number">{String(i+1).padStart(2,'0')}</span><strong>{l}</strong>{i===0?<Link to={`/courses/${c.id}/lessons/1`}>Открыть ↗</Link>:<span className="pill">Позже</span>}</div>)}</section><aside className="panel course-aside"><span className="eyebrow">ВАШ НАСТАВНИК</span><h3>{c.mentor}</h3><p>Демонстрационный автор</p><hr/><p>{c.lessons} уроков · {c.duration}</p><p>Зачисление ещё не подключено.</p><button className="button" disabled>Запись · неделя 13</button></aside></div></>;}
-// TODO(W13, Ануар): PROGRESS-01 — заменить демо-уведомление сохранением прогресса через API.
-function Lesson({onNotice}:{onNotice:(s:string)=>void}) {const {courseId,lessonId}=useParams();const c=courses.find(c=>c.id===courseId);if(!c||lessonId!=='1')return <NotFound/>;return <><Link className="back" to={`/courses/${c.id}`}>← {c.title}</Link><Heading tag="ДЕМО-УРОК · 01" title={c.id==='data-thinking'?'Зачем нам данные':'Знакомство с направлением'} text="Небольшое наблюдение — первый шаг к новой модели."/><div className="detail-grid"><article className="panel prose"><div className="lesson-cover mint"><span>Сначала вопрос.<br/>Потом данные.</span><b>↗</b></div><h2>Начните с понятного примера</h2><p>Представьте учебную мастерскую: у каждого курса есть название, у каждого участника — имя, а у каждого урока — место в программе. Эти сведения нужно хранить так, чтобы их можно было найти и проверить.</p><h3>Что считать сущностью?</h3><p>Сущность — объект, о котором мы храним сведения. «Студент» и «курс» — сущности, а запись студента на курс — связь между ними.</p><blockquote>Сначала объясните модель другому человеку. Затем перенесите её в таблицы.</blockquote><h3>Попробуйте на бумаге</h3><p>Назовите три объекта своей учебной группы. Какие сведения о них нужны? Какие объекты связаны между собой?</p><button className="button" onClick={()=>onNotice('Это демо: отметка о прохождении не сохраняется. Реальный прогресс запланирован на неделю 13.')}>Я прочитал · демо</button></article><aside className="panel course-aside"><span className="eyebrow">СЛЕДУЮЩИЙ ШАГ</span><h3>Проверьте идею</h3><p>Посмотрите пример вопроса о сущностях.</p><Link className="button secondary" to="/quiz">К примеру теста →</Link><p className="micro">Попытки и оценки ещё не сохраняются.</p></aside></div></>;}
-function Assignments(){return <><Heading tag="ПРАКТИКА" title="Знание становится навыком." text="Макеты заданий: отправка решений появится на неделе 14."/><section className="panel"><div className="assignment"><div><span className="eyebrow">ДАННЫЕ ВОКРУГ НАС</span><h2>Нарисуйте модель мастерской</h2><p>Опишите пользователей, курсы и связи между ними. Результат — небольшая ER-диаграмма.</p></div><span className="pill">Демо-задание</span></div><button className="button" disabled>Прикрепить решение · неделя 14</button></section><section className="panel spaced"><h2>Короткая проверка</h2><p>Один демонстрационный вопрос о данных.</p><Link className="text-link" to="/quiz">Открыть макет теста →</Link></section></>;}
-function Quiz(){const [answer,setAnswer]=useState('');const [checked,setChecked]=useState(false);
-  // TODO(W13, Ерасыл): QUIZ-02 — получать вопросы API, отправлять ответы и показывать сохранённый серверный результат.
-  return <><Heading tag="ПРИМЕР ТЕСТА" title="Что вы заметили?" text="Один вопрос для знакомства. Это не настоящая попытка и не оценка."/><section className="panel quiz"><span className="eyebrow">ВОПРОС 01 / 01</span><h2>Что является сущностью в модели LMS?</h2>{['Цвет кнопки','Студент','Размер шрифта'].map(a=><label className={'answer '+(answer===a?'selected':'')} key={a}><input type="radio" name="answer" value={a} checked={answer===a} onChange={()=>{setAnswer(a);setChecked(false);}}/>{a}</label>)}<button className="button" disabled={!answer} onClick={()=>setChecked(true)}>Посмотреть объяснение</button>{checked&&<div role="status" className="explanation"><strong>{answer==='Студент'?'Верно.':'Попробуйте ещё раз.'}</strong><p>Студент — объект, о котором хранят данные. Цвет кнопки и размер шрифта относятся к оформлению интерфейса.</p><p className="micro">Проверка выполнена в браузере. В БД ничего не записано.</p></div>}</section></>;}
-function Profile({role}:{role:Role}) {return <><Heading tag="ПРОФИЛЬ" title="Ваше место в мастерской." text="Пример профиля. Личные данные пока нельзя изменить."/><section className="panel profile"><span className="large-avatar">Р</span><div><span className="eyebrow">ДЕМО-ПОЛЬЗОВАТЕЛЬ</span><h2>Участник мастерской</h2><p>{roleNames[role]} · {role}@example.test</p><p>Это пример интерфейса, а не запись текущего пользователя из БД.</p><button className="button secondary" disabled>Редактирование · неделя 12</button></div></section></>;}
-function Auth({register}:{register:boolean}) {const [message,setMessage]=useState('');
-  // TODO(W12, Ануар): AUTH-02 — подключить регистрацию, вход, сессию и редактирование профиля к защищённому API.
-  return <><Heading tag="АККАУНТ" title={register?'Начните свой маршрут.':'Рады видеть вас снова.'} text="Макет формы. Авторизация ещё не реализована."/><form className="panel auth" onSubmit={e=>{e.preventDefault();setMessage('Демонстрационная форма: аккаунт не создан, вход не выполнен, данные не отправлены.');}}>{register&&<label>Имя<input required maxLength={100} autoComplete="name"/></label>}<label>Электронная почта<input type="email" required autoComplete="email"/></label><label>Пароль<input type="password" required minLength={8} autoComplete={register?'new-password':'current-password'}/></label><button className="button">{register?'Проверить форму регистрации':'Проверить форму входа'}</button>{message&&<p role="status">{message}</p>}<Link to={register?'/login':'/register'}>{register?'Уже есть аккаунт? Войти':'Создать аккаунт'} →</Link></form></>;}
-function Staff(){
-  // TODO(W14, Ануар): STAFF-02 — подключить создание, редактирование и публикацию материалов с серверной проверкой роли.
-  return <><Heading tag="ПРЕПОДАВАТЕЛЬ" title="Соберите маршрут для студентов." text="Макет управления материалами. Изменения пока недоступны."/><section className="panel"><div className="section-title"><h2>Материалы мастерской</h2><button className="button" disabled>Новый курс · неделя 14</button></div>{courses.map(c=><div className="lesson-row" key={c.id}><strong>{c.title}</strong><span className="pill">Демо</span><Link to={`/courses/${c.id}`}>Посмотреть ↗</Link></div>)}</section></>;}
-function Admin(){
-  // TODO(W14, Ануар): ADMIN-01 — добавить защищённое управление ролями без возможности самоповышения.
-  return <><Heading tag="АДМИНИСТРАТОР" title="Порядок в учебном пространстве." text="Макет панели: реальные пользователи и права пока не загружаются."/><section className="panel"><h2>Пример распределения ролей</h2>{Object.entries(roleNames).map(([key,name])=><div className="lesson-row" key={key}><strong>{key}@example.test</strong><span className="pill">{name}</span></div>)}<p>Переключение роли в меню меняет только вид макета. Это не защита доступа.</p><button className="button" disabled>Изменение ролей · неделя 14</button></section></>;}
-function Roadmap(){return <><Heading tag="МАРШРУТ ПРОЕКТА" title="От макета к рабочей системе." text="Сейчас — каркас. Каждый следующий этап имеет проверяемый результат."/><div className="roadmap">{[['11','Основа и доказательства','Запуск, техническое описание тестов, проверки БД и исходный отчёт.'],['12','Аккаунты и материалы','Настоящий вход, профиль, курсы, модули и уроки в БД.'],['13','Учебный маршрут','Запись на курс, интеграция тестов, попытки и сохранённый результат.'],['14','Практика и управление','Задания, оценки, материалы преподавателя, права и измерения БД.'],['15','Проверка и защита','Основной сценарий от начала до конца, восстановление БД и демонстрация.']].map(([week,title,text])=><section className="panel" key={week}><span className="week-number">{week}</span><div><h2>{title}</h2><p>{text}</p></div></section>)}</div></>;}
-function AccessDenied(){return <section className="panel"><h1>Этот макет для другой роли</h1><p>Выберите соответствующую роль в меню, чтобы посмотреть интерфейс. Настоящая авторизация ещё не реализована.</p><Link to="/">Вернуться к обзору →</Link></section>;}
-function NotFound(){return <section className="panel"><h1>Здесь пока нет страницы</h1><p>Проверьте адрес или вернитесь в каталог.</p><Link to="/courses">Открыть каталог →</Link></section>;}
+function MyCourses() {
+  const { data, error } = useLoad("/me/courses");
+  return (
+    <>
+      <Heading
+        title="Моё обучение"
+        text="Прогресс курса — доля завершённых уроков."
+      />
+      <State data={data} error={error} />
+      {data?.length === 0 && <p>Вы пока не зачислены ни на один курс.</p>}
+      {data?.map((c: Row) => (
+        <section className="panel spaced" key={c.id}>
+          <h2>
+            <Link to={`/courses/${c.id}`}>{c.title} →</Link>
+          </h2>
+          <Progress p={c.progress} />
+          <p>
+            Последняя активность: <DateText value={c.progress.last_activity} />
+          </p>
+        </section>
+      ))}
+    </>
+  );
+}
+function CourseView() {
+  const { courseId } = useParams();
+  const { data: c, error } = useLoad("/courses/" + courseId);
+  return (
+    <>
+      <State data={c} error={error} />
+      {c && (
+        <>
+          <Heading title={c.title} text={c.description} />
+          <section className="panel">
+            <Progress p={c.progress} />
+            {c.modules.map((m: Row) => (
+              <section key={m.id}>
+                <h2>
+                  {m.position}. {m.title}
+                </h2>
+                {c.items
+                  .filter((l: Row) => l.module_id === m.id)
+                  .map((l: Row) => (
+                    <div className="lesson-row" key={l.id}>
+                      <span>{l.position}</span>
+                      <div>
+                        <Link to={`/courses/${c.id}/lessons/${l.id}`}>
+                          <strong>{l.title}</strong>
+                        </Link>
+                        <p className="micro">{l.summary}</p>
+                        <span>
+                          {l.duration_minutes} мин ·{" "}
+                          {l.video ? "Видео" : "Текст"} · {l.status}
+                        </span>
+                        {l.demo && (
+                          <span className="pill">Тестовый прогресс</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </section>
+            ))}
+          </section>
+        </>
+      )}
+    </>
+  );
+}
+function TrackedVideo({
+  lesson,
+  onProgress,
+}: {
+  lesson: Row;
+  onProgress: (p: Row) => void;
+}) {
+  const video = useRef<HTMLVideoElement>(null),
+    last = useRef<{ time: number; wall: number } | null>(null),
+    pending = useRef<[number, number] | null>(null),
+    chain = useRef(Promise.resolve());
+  const [error, setError] = useState("");
+  function flush() {
+    const span = pending.current;
+    pending.current = null;
+    if (!span || span[1] - span[0] < 0.05) return;
+    chain.current = chain.current.then(async () => {
+      try {
+        onProgress(
+          await api(`/lessons/${lesson.id}/watch`, "POST", {
+            start: span[0],
+            end: span[1],
+          }),
+        );
+        setError("");
+      } catch (e) {
+        setError((e as Error).message);
+      }
+    });
+  }
+  function reset() {
+    flush();
+    last.current = null;
+  }
+  function tick() {
+    const v = video.current!,
+      wall = performance.now() / 1000;
+    if (v.paused || v.seeking || document.hidden) {
+      reset();
+      return;
+    }
+    const prev = last.current;
+    last.current = { time: v.currentTime, wall };
+    if (!prev) return;
+    const delta = v.currentTime - prev.time,
+      elapsed = wall - prev.wall;
+    if (delta <= 0 || delta > Math.min(2, elapsed * v.playbackRate + 0.2)) {
+      flush();
+      return;
+    }
+    if (!pending.current) pending.current = [prev.time, v.currentTime];
+    else pending.current[1] = v.currentTime;
+    if (pending.current[1] - pending.current[0] >= 4) flush();
+  }
+  useEffect(() => {
+    function hidden() {
+      if (document.hidden) reset();
+    }
+    document.addEventListener("visibilitychange", hidden);
+    return () => {
+      document.removeEventListener("visibilitychange", hidden);
+      reset();
+    };
+  }, [lesson.id]);
+  return (
+    <>
+      <video
+        ref={video}
+        src={lesson.video_url}
+        controls
+        preload="metadata"
+        onTimeUpdate={tick}
+        onSeeking={reset}
+        onSeeked={() => {
+          last.current = null;
+        }}
+        onPause={reset}
+        onEnded={reset}
+        onPlay={() => {
+          last.current = null;
+        }}
+        onRateChange={reset}
+        onError={() =>
+          setError(
+            "Видео недоступно или источник не поддерживает HTML5. Прогресс не начисляется.",
+          )
+        }
+      />
+      <p className="micro">
+        Завершение после 90% уникального просмотра. Перемотка не добавляет
+        проценты.
+      </p>
+      {error && <p role="alert">{error}</p>}
+    </>
+  );
+}
+function LessonView() {
+  const { lessonId } = useParams();
+  const { data: l, error, reload } = useLoad("/lessons/" + lessonId);
+  const [message, setMessage] = useState(""),
+    [p, setP] = useState<Row | null>(null),
+    [busy, setBusy] = useState(false);
+  useEffect(() => {
+    setP(null);
+    setMessage("");
+  }, [lessonId]);
+  return (
+    <>
+      <State data={l} error={error} />
+      {l && (
+        <>
+          <Link to={`/courses/${l.course_id}`}>← К курсу</Link>
+          <Heading
+            title={l.title}
+            text={`${l.duration_minutes} мин · ${l.summary}`}
+          />
+          <article className="panel prose">
+            <p>
+              {(p || l).status}
+              {(p || l).demo ? " · Тестовый прогресс" : ""}
+            </p>
+            {l.video_url ? (
+              <>
+                <TrackedVideo key={l.id} lesson={l} onProgress={setP} />
+                <p>Просмотрено: {(p || l).video_percent ?? 0}%</p>
+              </>
+            ) : (
+              <p className="micro">Текстовый урок. Видео не добавлено.</p>
+            )}
+            <div className="lesson-content">{l.content}</div>
+            <h2>Практика</h2>
+            <p>
+              {l.practice || "Повтори пример из урока и объясни результат."}
+            </p>
+            {!l.video_url && (
+              <button
+                className="button"
+                disabled={busy || Boolean((p || l).completed && !(p || l).demo)}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await api(`/lessons/${l.id}/complete`, "POST");
+                    setMessage("Урок завершён. Прогресс сохранён.");
+                    reload();
+                  } catch (e) {
+                    setMessage((e as Error).message);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Завершить урок
+              </button>
+            )}
+            <p role="status">{message}</p>
+          </article>
+        </>
+      )}
+    </>
+  );
+}
+function GradesTable({ items }: { items: Row[] }) {
+  return items.length ? (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Курс / урок</th>
+            <th>Тип</th>
+            <th>Оценка</th>
+            <th>Комментарий</th>
+            <th>Автор / изменение</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((g) => (
+            <tr key={g.id}>
+              <td>
+                {g.course}
+                <br />
+                {g.lesson || "Итог за курс"}
+              </td>
+              <td>
+                {
+                  (
+                    {
+                      course: "Итог",
+                      lesson: "Урок",
+                      practice: "Практика",
+                    } as Row
+                  )[g.kind]
+                }
+              </td>
+              <td>
+                <strong>
+                  {g.score === null ? "Не выставлена" : `${g.score} / 100`}
+                </strong>
+                {g.demo && <small> · Тестовая</small>}
+              </td>
+              <td>{g.comment || "—"}</td>
+              <td>
+                {g.author || "—"}
+                <br />
+                {g.updated_at ? <DateText value={g.updated_at} /> : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  ) : (
+    <p>Не выставлена — оценок пока нет.</p>
+  );
+}
+function OwnGrades() {
+  const { data, error } = useLoad("/me/gradebook");
+  return (
+    <>
+      <Heading
+        title="Мои оценки"
+        text="Шкала 0–100. Ноль — выставленная оценка, отдельно от отсутствия оценки."
+      />
+      <State data={data} error={error} />
+      {data && (
+        <section className="panel">
+          <GradesTable items={data} />
+        </section>
+      )}
+    </>
+  );
+}
+function Profile({ onChange }: { onChange: (u: Row) => void }) {
+  const user = useContext(UserContext)!;
+  const [message, setMessage] = useState("");
+  return (
+    <>
+      <Heading title="Мой профиль" text={`${user.email} · ${user.role}`} />
+      <form
+        className="panel editor"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const f = new FormData(e.currentTarget);
+          try {
+            onChange(
+              await api("/me", "PATCH", {
+                display_name: f.get("display_name"),
+                bio: f.get("bio"),
+              }),
+            );
+            setMessage("Сохранено");
+          } catch (e) {
+            setMessage((e as Error).message);
+          }
+        }}
+      >
+        <label>
+          Имя
+          <input
+            name="display_name"
+            defaultValue={user.display_name}
+            maxLength={100}
+            required
+          />
+        </label>
+        <label>
+          О себе
+          <textarea name="bio" defaultValue={user.bio} maxLength={500} />
+        </label>
+        <button className="button">Сохранить</button>
+        <p role="status">{message}</p>
+      </form>
+    </>
+  );
+}
+function Students() {
+  const courses = useLoad("/staff/courses");
+  const [cid, setCid] = useState(""),
+    [q, setQ] = useState(""),
+    [selection, setSelection] = useState<Row | null>(null);
+  const { data, error } = useLoad(
+    "/staff/students?" +
+      new URLSearchParams({ ...(cid ? { course_id: cid } : {}), q }),
+  );
+  return (
+    <>
+      <Heading
+        title="Ученики"
+        text="Ученики ваших курсов. Демонстрационная активность отмечена отдельно."
+      />
+      <div className="toolbar">
+        <label>
+          Поиск по имени
+          <input value={q} onChange={(e) => setQ(e.target.value)} />
+        </label>
+        <label>
+          Курс
+          <select
+            value={cid}
+            onChange={(e) => {
+              setCid(e.target.value);
+              setSelection(null);
+            }}
+          >
+            <option value="">Все мои курсы</option>
+            {courses.data?.map((c: Row) => (
+              <option key={c.id} value={c.id}>
+                {c.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <State data={data} error={error || courses.error} />
+      {data && (
+        <section className="panel table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ученик</th>
+                <th>Курс</th>
+                <th>Уроки / прогресс</th>
+                <th>Активность</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((r: Row) => (
+                <tr key={r.user_id + "-" + r.course_id}>
+                  <td>
+                    <button
+                      className="text-button"
+                      onClick={() => setSelection(r)}
+                    >
+                      {r.name} →
+                    </button>
+                  </td>
+                  <td>{r.course}</td>
+                  <td>
+                    {r.completed}/{r.total} · {r.percent}%{" "}
+                    {r.demo && <small>Тестовые</small>}
+                  </td>
+                  <td>
+                    <DateText value={r.last_activity} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!data.length && <p>Ученики не найдены.</p>}
+        </section>
+      )}
+      {selection && (
+        <StudentDetail
+          key={selection.course_id + "-" + selection.user_id}
+          row={selection}
+        />
+      )}
+    </>
+  );
+}
+function StudentDetail({ row }: { row: Row }) {
+  const { data, error } = useLoad(
+    `/staff/courses/${row.course_id}/students/${row.user_id}`,
+  );
+  return (
+    <section className="panel spaced">
+      <h2>
+        {row.name} · {row.course}
+      </h2>
+      <State data={data} error={error} />
+      {data && (
+        <>
+          <Progress p={data} />
+          {data.lessons.map((l: Row) => (
+            <div className="lesson-row" key={l.id}>
+              <strong>{l.title}</strong>
+              <span>
+                {l.status} ·{" "}
+                {l.video ? `${l.video_percent ?? 0}% видео` : "Текст"}{" "}
+                {l.demo ? "· Тестовые данные" : ""}
+              </span>
+            </div>
+          ))}
+          <h3>Оценки</h3>
+          <GradesTable items={data.grades} />
+        </>
+      )}
+    </section>
+  );
+}
+function TeacherGrades() {
+  const courses = useLoad("/staff/courses");
+  const [cid, setCid] = useState("");
+  return (
+    <>
+      <Heading
+        title="Оценки"
+        text="Оценка урока, практики или итог за курс. Изменение сохраняет автора и время."
+      />
+      <State data={courses.data} error={courses.error} />
+      <label>
+        Курс
+        <select value={cid} onChange={(e) => setCid(e.target.value)}>
+          <option value="">Выберите курс</option>
+          {courses.data?.map((c: Row) => (
+            <option key={c.id} value={c.id}>
+              {c.title}
+            </option>
+          ))}
+        </select>
+      </label>
+      {cid && <GradeEditor key={cid} cid={cid} />}
+    </>
+  );
+}
+function GradeEditor({ cid }: { cid: string }) {
+  const students = useLoad("/staff/students?course_id=" + cid),
+    course = useLoad("/courses/" + cid);
+  const [uid, setUid] = useState(""),
+    [kind, setKind] = useState("course"),
+    [lid, setLid] = useState(""),
+    [message, setMessage] = useState(""),
+    [version, setVersion] = useState(0);
+  const detail = useLoad(uid ? `/staff/courses/${cid}/students/${uid}` : null);
+  const [score, setScore] = useState(""),
+    [comment, setComment] = useState("");
+  useEffect(() => {
+    const existing = detail.data?.grades.find(
+      (g: Row) =>
+        g.kind === kind &&
+        (kind === "course"
+          ? g.lesson_id === null
+          : String(g.lesson_id) === lid),
+    );
+    setScore(existing ? String(existing.score) : "");
+    setComment(existing?.comment || "");
+  }, [uid, kind, lid, detail.data]);
 
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
+  return (
+    <section className="panel spaced">
+      <State data={students.data} error={students.error || course.error} />
+      <form
+        className="editor"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const f = new FormData(e.currentTarget);
+          try {
+            await api(`/staff/courses/${cid}/grades`, "PUT", {
+              user_id: Number(uid),
+              lesson_id: kind === "course" ? null : Number(lid),
+              kind,
+              score: Number(f.get("score")),
+              comment: f.get("comment"),
+            });
+            setMessage("Оценка сохранена");
+            setVersion((v) => v + 1);
+            detail.reload();
+          } catch (e) {
+            setMessage((e as Error).message);
+          }
+        }}
+      >
+        <label>
+          Ученик
+          <select value={uid} required onChange={(e) => setUid(e.target.value)}>
+            <option value="">Выберите ученика</option>
+            {students.data?.map((s: Row) => (
+              <option key={s.user_id} value={s.user_id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Тип
+          <select value={kind} onChange={(e) => setKind(e.target.value)}>
+            <option value="course">Итог за курс</option>
+            <option value="lesson">Урок</option>
+            <option value="practice">Практика</option>
+          </select>
+        </label>
+        {kind !== "course" && (
+          <label>
+            Урок
+            <select
+              value={lid}
+              required
+              onChange={(e) => setLid(e.target.value)}
+            >
+              <option value="">Выберите урок</option>
+              {course.data?.items.map((l: Row) => (
+                <option key={l.id} value={l.id}>
+                  {l.title}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label>
+          Оценка 0–100
+          <input
+            name="score"
+            value={score}
+            onChange={(e) => setScore(e.target.value)}
+            type="number"
+            min={0}
+            max={100}
+            step={1}
+            required
+          />
+        </label>
+        <label>
+          Комментарий
+          <textarea
+            name="comment"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            maxLength={2000}
+          />
+        </label>
+        <button className="button" disabled={!uid}>
+          Сохранить / изменить оценку
+        </button>
+        <p role="status">{message}</p>
+      </form>
+      {uid && (
+        <StudentDetail
+          key={uid + "-" + version}
+          row={{
+            user_id: uid,
+            course_id: cid,
+            name: students.data?.find((s: Row) => String(s.user_id) === uid)
+              ?.name,
+            course: course.data?.title,
+          }}
+        />
+      )}
+    </section>
+  );
+}
+function Materials() {
+  const { data, error, reload } = useLoad("/staff/courses");
+  const [chosen, setChosen] = useState("");
+  return (
+    <>
+      <Heading
+        title="Материалы мастерской"
+        text="Управление своими курсами, модулями и уроками."
+      />
+      <State data={data} error={error} />
+      <label>
+        Курс
+        <select value={chosen} onChange={(e) => setChosen(e.target.value)}>
+          <option value="">Новый курс</option>
+          {data?.map((c: Row) => (
+            <option key={c.id} value={c.id}>
+              {c.title}
+            </option>
+          ))}
+        </select>
+      </label>
+      <CourseEditor
+        key={chosen + JSON.stringify(data)}
+        course={data?.find((c: Row) => String(c.id) === chosen)}
+        onSave={reload}
+      />
+      {chosen && <ContentEditor key={chosen} cid={chosen} />}
+    </>
+  );
+}
+function CourseEditor({
+  course: c,
+  onSave,
+}: {
+  course?: Row;
+  onSave: () => void;
+}) {
+  const [message, setMessage] = useState("");
+  return (
+    <form
+      className="panel editor spaced"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const f = new FormData(e.currentTarget);
+        try {
+          await api(
+            "/staff/courses" + (c ? "/" + c.id : ""),
+            c ? "PUT" : "POST",
+            Object.fromEntries(f),
+          );
+          onSave();
+          setMessage("Сохранено");
+        } catch (e) {
+          setMessage((e as Error).message);
+        }
+      }}
+    >
+      <h2>{c ? "Параметры курса" : "Создать курс"}</h2>
+      <label>
+        Название
+        <input name="title" required maxLength={200} defaultValue={c?.title} />
+      </label>
+      <label>
+        Адрес (латиница и дефисы)
+        <input
+          name="slug"
+          required
+          pattern="[a-z0-9]+(-[a-z0-9]+)*"
+          defaultValue={c?.slug}
+        />
+      </label>
+      <label>
+        Описание
+        <textarea
+          name="description"
+          maxLength={5000}
+          defaultValue={c?.description}
+        />
+      </label>
+      <label>
+        Публикация
+        <select name="status" defaultValue={c?.status || "draft"}>
+          <option value="draft">Черновик</option>
+          <option value="published">Опубликован</option>
+        </select>
+      </label>
+      <button className="button">Сохранить курс</button>
+      {c && (
+        <button
+          className="button danger"
+          type="button"
+          onClick={async () => {
+            if (!confirm("Удалить курс, уроки, прогресс и оценки?")) return;
+            try {
+              await api("/staff/courses/" + c.id, "DELETE");
+              location.assign("/teacher");
+            } catch (e) {
+              setMessage((e as Error).message);
+            }
+          }}
+        >
+          Удалить курс
+        </button>
+      )}
+      <p role="status">{message}</p>
+    </form>
+  );
+}
+function ContentEditor({ cid }: { cid: string }) {
+  const { data, error, reload } = useLoad("/courses/" + cid);
+  const [message, setMessage] = useState(""),
+    [editing, setEditing] = useState<Row | null>(null);
+  return (
+    <section className="panel spaced">
+      <h2>Модули и уроки</h2>
+      <State data={data} error={error} />
+      {data?.modules.map((m: Row) => (
+        <section className="module-editor" key={m.id}>
+          <form
+            className="toolbar"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              try {
+                await api("/staff/modules/" + m.id, "PUT", {
+                  title: f.get("title"),
+                  position: Number(f.get("position")),
+                });
+                reload();
+              } catch (e) {
+                setMessage((e as Error).message);
+              }
+            }}
+          >
+            <label>
+              Название модуля
+              <input name="title" required defaultValue={m.title} />
+            </label>
+            <label>
+              Позиция
+              <input
+                type="number"
+                name="position"
+                min={1}
+                defaultValue={m.position}
+                required
+              />
+            </label>
+            <button className="button secondary">Сохранить модуль</button>
+            <button
+              type="button"
+              className="button danger"
+              onClick={async () => {
+                if (!confirm("Удалить модуль со всеми уроками?")) return;
+                try {
+                  await api("/staff/modules/" + m.id, "DELETE");
+                  reload();
+                } catch (e) {
+                  setMessage((e as Error).message);
+                }
+              }}
+            >
+              Удалить
+            </button>
+          </form>
+          {data.items
+            .filter((l: Row) => l.module_id === m.id)
+            .map((l: Row) => (
+              <div className="lesson-row" key={l.id}>
+                <strong>
+                  {l.position}. {l.title}
+                </strong>
+                <button
+                  className="text-button"
+                  onClick={async () => {
+                    try {
+                      setEditing({
+                        ...(await api("/lessons/" + l.id)),
+                        module_id: m.id,
+                        position: l.position,
+                      });
+                    } catch (e) {
+                      setMessage((e as Error).message);
+                    }
+                  }}
+                >
+                  Редактировать →
+                </button>
+                <button
+                  className="text-button"
+                  onClick={async () => {
+                    if (!confirm("Удалить урок, его прогресс и оценки?"))
+                      return;
+                    try {
+                      await api("/staff/lessons/" + l.id, "DELETE");
+                      reload();
+                    } catch (e) {
+                      setMessage((e as Error).message);
+                    }
+                  }}
+                >
+                  Удалить
+                </button>
+              </div>
+            ))}
+          <button
+            className="button secondary"
+            onClick={() =>
+              setEditing({
+                module_id: m.id,
+                position:
+                  Math.max(
+                    0,
+                    ...data.items
+                      .filter((l: Row) => l.module_id === m.id)
+                      .map((l: Row) => l.position),
+                  ) + 1,
+              })
+            }
+          >
+            Добавить урок
+          </button>
+        </section>
+      ))}
+      <form
+        className="editor spaced"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const form = e.currentTarget,
+            f = new FormData(form);
+          try {
+            await api(`/staff/courses/${cid}/modules`, "POST", {
+              title: f.get("title"),
+              position: Number(f.get("position")),
+            });
+            form.reset();
+            reload();
+          } catch (e) {
+            setMessage((e as Error).message);
+          }
+        }}
+      >
+        <h3>Новый модуль</h3>
+        <label>
+          Название
+          <input name="title" required />
+        </label>
+        <label>
+          Порядок
+          <input type="number" name="position" min={1} required />
+        </label>
+        <button className="button">Добавить модуль</button>
+      </form>
+      {editing && (
+        <LessonEditor
+          key={editing.id || "new" + editing.module_id}
+          lesson={editing}
+          onSave={() => {
+            setEditing(null);
+            reload();
+          }}
+        />
+      )}
+      <p role="status">{message}</p>
+    </section>
+  );
+}
+function LessonEditor({
+  lesson: l,
+  onSave,
+}: {
+  lesson: Row;
+  onSave: () => void;
+}) {
+  const [message, setMessage] = useState("");
+  return (
+    <form
+      className="editor panel spaced"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const f = new FormData(e.currentTarget),
+          data = Object.fromEntries(f) as Row;
+        for (const key of ["position", "duration_minutes"])
+          data[key] = Number(data[key]);
+        data.video_url = data.video_url || null;
+        data.video_duration = data.video_duration
+          ? Number(data.video_duration)
+          : null;
+        try {
+          await api(
+            l.id
+              ? "/staff/lessons/" + l.id
+              : `/staff/modules/${l.module_id}/lessons`,
+            l.id ? "PUT" : "POST",
+            data,
+          );
+          onSave();
+        } catch (e) {
+          setMessage((e as Error).message);
+        }
+      }}
+    >
+      <h3>{l.id ? "Редактирование" : "Новый урок"}</h3>
+      {[
+        ["title", "Название"],
+        ["summary", "Краткое описание"],
+        ["position", "Порядок"],
+        ["duration_minutes", "Длительность, минут"],
+        ["video_url", "Проверенный URL HTML5 видео (не iframe)"],
+        ["video_duration", "Точная длительность видео, секунд"],
+      ].map(([key, label]) => (
+        <label key={key}>
+          {label}
+          <input
+            name={key}
+            type={
+              ["position", "duration_minutes", "video_duration"].includes(key)
+                ? "number"
+                : "text"
+            }
+            min={1}
+            required={["title", "position", "duration_minutes"].includes(key)}
+            defaultValue={l[key] ?? (key === "duration_minutes" ? 15 : "")}
+          />
+        </label>
+      ))}
+      <label>
+        Учебный текст
+        <textarea name="content" rows={10} defaultValue={l.content} />
+      </label>
+      <label>
+        Практика
+        <textarea name="practice" rows={3} defaultValue={l.practice} />
+      </label>
+      <p className="micro">
+        При замене видео прежний прогресс сбрасывается. Внешние iframe не
+        поддерживаются.
+      </p>
+      <button className="button">Сохранить урок</button>
+      <button className="button secondary" type="button" onClick={onSave}>
+        Закрыть
+      </button>
+      <p role="status">{message}</p>
+    </form>
+  );
+}
+function Admin() {
+  const { data, error } = useLoad("/admin/users");
+  return (
+    <>
+      <Heading
+        title="Пользователи"
+        text="Учётные записи и роли. Повышение роли через профиль запрещено."
+      />
+      <State data={data} error={error} />
+      {data?.map((u: Row) => (
+        <div className="lesson-row" key={u.id}>
+          <strong>{u.display_name}</strong>
+          <span>
+            {u.email} · {u.role}
+          </span>
+        </div>
+      ))}
+    </>
+  );
+}
+createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);

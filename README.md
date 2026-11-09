@@ -1,111 +1,57 @@
 # Mini LMS · Учебная мастерская
 
-Учебный проект команды из четырёх человек. Самостоятельный макет с маршрутами обучения: студент выбирает курс, изучает урок, проходит тест и видит результат; преподаватель управляет материалами. **Полный сценарий пока не реализован.**
+React + TypeScript + Vite, FastAPI + SQLAlchemy + Alembic, PostgreSQL 17.
 
 Репозиторий: https://github.com/astr0kaiqqw/Mini-LMS
 
-## Текущий статус
-Неделя 10, каркас 0.1.0. План развития — недели 11–15. Интерфейс использует вымышленные локальные примеры. Переключение ролей — просмотр макетов, не авторизация. Формы не создают аккаунт; тест не сохраняет попытку; кнопки будущих функций отмечены неделей. В схеме БД: roles, users, user_profiles, courses, modules, lessons. API и интерфейс пока используют demo-данные. Для курсов добавлено хранение; заданий и оценок в схеме пока нет.
+Обновление от 9 ноября 2026: каталог из PostgreSQL, вход и серверные роли, 12 учебных курсов по 10 текстовых уроков, 36 тестовых учеников, прогресс, оценки и управление материалами. Курс «Данные вокруг нас» сохранён отдельно. Старые документы с недельным планом описывают исходный каркас; текущий статус — в инструкции ниже.
 
-Demo API не записывает данные и не требует входа. Никакие защищённые реальные данные через него не публикуются. Подробности: [состояние](docs/PROJECT_STATUS.md), [намеренно не сделано](docs/NOT_DONE_ON_PURPOSE.md).
+**[Запуск, аккаунты, показ преподавателю и фактические проверки](docs/LEARNING_DEMO.md)**
 
-## Команда
-| Участник | Зона |
-|---|---|
-| Ануар | Frontend и backend |
-| Ерасыл | Frontend и backend, интеграция quizzes |
-| Олжас | Аналитика, требования, распределение задач, техническое описание |
-| Руслан | Только БД: схема, миграции, запросы, индексы, проверки, права, backup и документация |
+## Быстрый запуск с нуля
 
-На ближайший отчёт Руслан готовит **optimization errors and test report** по БД. Исходные обещания и зависимости зафиксированы в PROJECT_STATUS; помощник не объявляет их выполненными за участников.
+Нужны Python 3.13+, Node 22.12+ и Docker с запущенным engine. Если `.env` уже существует, сохрани его настройки.
 
-## Стек
-React 19 + TypeScript + Vite; Python 3.13+ + FastAPI; PostgreSQL 17 + SQLAlchemy 2 + Alembic. SQLAlchemy связывает код с таблицами; Alembic хранит версии схемы. Redis, брокеры сообщений и другие сервисы пока не нужны.
+```bash
+cp .env.example .env
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.lock.txt
+docker compose up -d --wait postgres
+alembic upgrade head
+PYTHONPATH=backend python database/seeds/demo_content.py
+PYTHONPATH=backend python database/seeds/learning_demo.py
+PYTHONPATH=backend uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
 
-## Быстрый просмотр frontend
-Нужен Node.js 22.12+ (рекомендуется 24). Из корня:
+В другом терминале:
+
 ```bash
 cd frontend
 npm ci
 npm run dev
 ```
-Открыть http://127.0.0.1:5173. Макет работает и без backend; каталог явно сообщает об этом. Маршруты: /, /courses, /courses/data-thinking, /courses/data-thinking/lessons/1, /assignments, /quiz, /profile, /login, /register, /teacher, /admin, /roadmap. Для панелей выберите соответствующую demo-роль в меню. Роль и ответы при перезагрузке сбрасываются.
 
-## Полный локальный запуск
-Нужны Python 3.13+, Docker Desktop с запущенным engine и свободный порт 55432. Команды из корня проекта:
-```bash
-cp .env.example .env
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r backend/requirements.lock.txt
-docker compose up -d --wait postgres
-alembic upgrade head
-PYTHONPATH=backend python database/seeds/demo_users.py
-PYTHONPATH=backend python database/seeds/demo_content.py
-PYTHONPATH=backend uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-По умолчанию внешний порт БД — 55432, внутренний — 5432. Если внешний порт занят, измените POSTGRES_PORT и DATABASE_URL в .env согласованно. Пароль .env.example — только пример для локальной машины, не секрет для размещения. В другой вкладке терминала запустите frontend командами выше. Vite проксирует /api и /health на порт 8000.
+Сайт: http://127.0.0.1:5173. API: http://127.0.0.1:8000/docs. Преподаватель: `instructor@demo.example.test`, пароль `LearnDemo2026!`. Использовать только с вымышленными локальными данными.
 
-API docs: http://127.0.0.1:8000/docs
-- GET /health/live — процесс работает, режим demo.
-- GET /health/ready — проверка соединения и наличия начальной таблицы users; 503 при недоступной БД/схеме. Это не полная проверка всех миграций.
-- GET /api/demo/courses — три примера, persisted=false.
-- GET /api/demo/courses/{id} — пример курса или 404.
+На текущем компьютере уже настроен отдельный постоянный PostgreSQL на **55434**, `mini_lms`, `mini_lms`, без пароля, данные в игнорируемом `work/postgres`. Не заменяй его `.env` примером Docker. Подробные команды перезапуска и подключения DBeaver — в [инструкции](docs/LEARNING_DEMO.md).
 
-В seed три записи: student@example.test, teacher@example.test, admin@example.test. **Паролей и входа у них нет.** Это строки для проверки схемы, а не работающие аккаунты.
+## Возможности
 
-В `backend/requirements.txt` перечислены прямые зависимости, в `requirements.lock.txt` — проверенные точные версии всей цепочки. При обновлении зависимостей обновляйте оба файла и повторяйте проверки.
+Ученик открывает зачисленные опубликованные курсы, завершает текстовые уроки, видит свой прогресс, оценки и комментарии, меняет имя и bio. Преподаватель управляет своими материалами, видит учеников с поиском/фильтром и выставляет оценки 0–100. Администратор видит пользователей и все курсы. Права проверяются на backend; роль не задаётся клиентом.
 
-## Проверки
-Из корня с активированной .venv:
-```bash
-PYTHONPATH=backend pytest backend/tests -q
-alembic upgrade head --sql
-cd frontend
-npm run build
-```
-Проверки PostgreSQL без специального флага пропускаются. Настоящий прогон: [DB_WORKFLOW](docs/DB_WORKFLOW.md); использовать только mini_lms_test_*.
+Прогресс и оценки примеров явно обозначены тестовыми. Все новые материалы текстовые, без непроверенных видеоссылок. Для прямого HTML5 видео реализовано объединение уникальных просмотренных участков с порогом 90%; iframe не поддерживаются. Телеметрия браузера не является доказательством внимания или защитой от намеренной подделки.
 
-GitHub Actions собирает frontend, запускает API-тесты, миграции, seed и проверки на PostgreSQL 17. Наличие workflow не означает успешный удалённый запуск: результат смотреть во вкладке Actions. Фактический локальный отчёт — [VALIDATION](docs/VALIDATION.md).
+Регистрация, сброс пароля, квизы, отправка решений, самостоятельное зачисление и смена ролей пока отсутствуют. Legacy `/api/demo/courses` остаётся явно демонстрационным; новый интерфейс использует `/api/courses`.
 
-Остановка: Ctrl+C в терминалах, `docker compose stop`. Данные PostgreSQL остаются в volume. Не используйте `docker compose down -v`, если хотите сохранить их.
+## Структура и проверки
 
-## Структура
-```text
-frontend/                 React, страницы и локальные mock-данные
-backend/app/              FastAPI, настройки, модели и demo API
-backend/tests/            API и отдельные PostgreSQL-проверки
-database/migrations/      единственный каталог миграций Alembic
-database/seeds/           небольшой повторяемый seed
-database/queries/         SQL для проверок и исходного плана
-database/docs/            инструкция backup/restore
-docs/                     план, обучение, workflow и отчёты
-.github/                  PR, Issues, CI
-```
+- `backend/app/learning.py` — защищённые API и правила доступа.
+- `backend/app/models.py`, `database/migrations/` — схема и миграции.
+- `database/seeds/curriculum.py`, `learning_demo.py` — материалы и повторяемое заполнение.
+- `backend/tests/` — API и PostgreSQL-проверки; требуют отдельной `mini_lms_test_*` БД с `RUN_DB_TESTS=1`.
+- `frontend/src/` — существующий стиль с рабочими экранами.
 
-## Документация
+37 тестов прошли на локальной PostgreSQL; сборка frontend проходит. Подробности и ограничения проверок — в [актуальном отчёте](docs/LEARNING_DEMO.md).
 
-- [Новая схема содержания и показ преподавателю](docs/DB_CONTENT_DEMO.md)
-- [План недель 11–15](docs/WEEKLY_PLAN.md)
-- [Реестр будущих задач](docs/NOT_DONE_ON_PURPOSE.md)
-- [Обучение БД](docs/DATABASE_GUIDE.md)
-- [Командная работа с БД](docs/DB_WORKFLOW.md)
-- [Техническое описание quizzes](docs/QUIZ_TECHNICAL_DESCRIPTION.md)
-- [Проверки БД](docs/DB_TEST_PLAN.md), [отчёт](docs/DB_TEST_REPORT.md), [ошибки](docs/DB_ERROR_LOG.md)
-- [Промпт для Codex в VS Code](docs/CODEX_HANDOFF.md)
-- [GitHub для новичков](docs/GITHUB_FLOW.md), [Issues W11](docs/WEEK_11_ISSUES.md)
-
-## Git
-Рабочие ветки: main → develop → feature/<name>-<task>; БД — feature/db-<task>. Коммиты на английском, Conventional Commits: `feat(db): add courses table`. Схему меняет Руслан через миграции. Новые функции идут через PR в develop, выпуск — через PR в main. Защита веток включается отдельно в GitHub.
-
-Если первый коммит ещё не создан:
-```bash
-git status
-git add README.md .gitignore .env.example compose.yaml alembic.ini frontend backend database docs .github
-git commit -m "feat: scaffold Mini LMS workshop"
-git branch -M main
-git push -u origin main
-git switch -c develop
-git push -u origin develop
-```
-Эти команды только для первоначально пустого репозитория; если коммит/ветки уже существуют, сначала проверьте `git log` и `git branch -a`. Не повторяйте создание и не используйте force push.
+Участники: Руслан — БД; Ануар и Ерасыл — backend/frontend; Олжас — требования и описание. Созданный с помощником код не считается автоматически самостоятельным вкладом участника.
