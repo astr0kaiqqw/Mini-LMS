@@ -29,7 +29,7 @@ cd frontend
 npm ci
 npm run dev
 ```
-Открыть http://127.0.0.1:5173. Макет работает и без backend; каталог явно сообщает об этом. Маршруты: /, /courses, /courses/data-thinking, /courses/data-thinking/lessons/1, /assignments, /quiz, /profile, /login, /register, /teacher, /admin, /roadmap. Для панелей выберите соответствующую demo-роль в меню. Роль и ответы при перезагрузке сбрасываются.
+Открыть http://127.0.0.1:5173. Каталог и страница курса читают demo API: без backend они показывают ошибку и кнопку «Повторить», локальные примеры не подставляются. Остальные макеты работают и без backend. Маршруты: /, /courses, /courses/data-thinking, /courses/data-thinking/lessons/1, /assignments, /quiz, /profile, /login, /register, /teacher, /admin, /roadmap. Для панелей выберите соответствующую demo-роль в меню. Роль и ответы при перезагрузке сбрасываются.
 
 ## Полный локальный запуск
 Нужны Python 3.13+, Docker Desktop с запущенным engine и свободный порт 55432. Команды из корня проекта:

@@ -6,3 +6,4 @@ export const courses = [
   { id: 'team-practice', title: 'Работа в команде', category: 'Практика', summary: 'Маленькие задачи, понятные договорённости и результат, который можно показать.', mentor: 'Дана Омарова', lessons: 5, duration: '1 ч 50 мин', color: 'lavender' },
 ];
 export const lessons = ['Зачем нам данные', 'Сущности и связи', 'Первый запрос', 'Практика: модель курса', 'Проверяем ограничения', 'Итоговая работа'];
+export type Course = typeof courses[number];
