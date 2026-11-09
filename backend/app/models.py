@@ -30,6 +30,49 @@ class UserProfile(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     bio: Mapped[str] = mapped_column(String(500), default="", server_default="")
 
-# TODO(W12, Руслан): DB-02 — добавить courses, modules, lessons и миграцию учётных данных.
+# TODO(W12, Руслан): DB-02 — согласовать и добавить хранение учётных данных.
 # TODO(W13, Руслан): DB-03 — добавить enrollments, quizzes, questions, options, attempts, answers.
 # TODO(W14, Руслан): DB-04 — добавить assignments, submissions, grades и измерить запросы на тестовых данных.
+
+
+class Course(Base):
+    __tablename__ = "courses"
+    __table_args__ = (
+        CheckConstraint("length(trim(title)) > 0", name="ck_courses_title"),
+        CheckConstraint("length(trim(slug)) > 0", name="ck_courses_slug"),
+        CheckConstraint("status IN ('draft', 'published')", name="ck_courses_status"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(100), unique=True)
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(String(5000), server_default="")
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), index=True)
+    status: Mapped[str] = mapped_column(String(20), server_default="draft")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Module(Base):
+    __tablename__ = "modules"
+    __table_args__ = (
+        UniqueConstraint("course_id", "position", name="uq_modules_course_position"),
+        CheckConstraint("position > 0", name="ck_modules_position"),
+        CheckConstraint("length(trim(title)) > 0", name="ck_modules_title"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
+    title: Mapped[str] = mapped_column(String(200))
+    position: Mapped[int] = mapped_column()
+
+
+class Lesson(Base):
+    __tablename__ = "lessons"
+    __table_args__ = (
+        UniqueConstraint("module_id", "position", name="uq_lessons_module_position"),
+        CheckConstraint("position > 0", name="ck_lessons_position"),
+        CheckConstraint("length(trim(title)) > 0", name="ck_lessons_title"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    module_id: Mapped[int] = mapped_column(ForeignKey("modules.id", ondelete="CASCADE"))
+    title: Mapped[str] = mapped_column(String(200))
+    content: Mapped[str] = mapped_column(String(20000), server_default="")
+    position: Mapped[int] = mapped_column()
