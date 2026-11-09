@@ -3,7 +3,7 @@ from typing import Literal
 import os
 import secrets
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 from sqlalchemy import select, delete, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
@@ -22,6 +22,8 @@ from .models import (
     LessonProgress,
     Grade,
     CourseTeacher,
+    QuizQuestion,
+    QuizAttempt,
 )
 from .security import hash_password, verify_password, token_hash
 
@@ -695,3 +697,52 @@ def admin_users(user=Depends(staff), s: Session = Depends(db)):
     if role(s, user) != "admin":
         raise HTTPException(403, "Только администратор")
     return [user_dict(s, u) for u in s.scalars(select(User).order_by(User.id))]
+
+
+# Answer keys are serialized only for authorized course staff.
+def quiz_data(s, course_id, user, require_open=False):
+    access(s, course_id, user)
+    is_staff = role(s, user) in ("teacher", "admin")
+    if is_staff:
+        owned(s, course_id, user)
+    progress = summary(s, course_id, user.id)
+    unlocked = is_staff or (progress["total"] > 0 and progress["completed"] == progress["total"])
+    if require_open and not unlocked:
+        raise HTTPException(403, "Завершите все уроки курса, чтобы открыть итоговый квиз")
+    lessons = lessons_for(s, course_id)
+    questions = {q.lesson_id: q for q in s.scalars(select(QuizQuestion).where(QuizQuestion.lesson_id.in_([l.id for l in lessons])))}
+    ready = bool(lessons) and all(l.id in questions for l in lessons)
+    return is_staff, unlocked, ready, lessons, questions
+
+
+@router.get("/courses/{course_id}/quiz")
+def get_quiz(course_id: int, user=Depends(current), s: Session = Depends(db)):
+    is_staff, unlocked, ready, lessons, questions = quiz_data(s, course_id, user)
+    attempts = s.scalars(select(QuizAttempt).where(QuizAttempt.user_id == user.id, QuizAttempt.course_id == course_id).order_by(QuizAttempt.id.desc())).all()
+    return dict(unlocked=unlocked, ready=ready, staff=is_staff, total=len(lessons),
+        attempts=[dict(id=a.id, correct=a.correct, total=a.total, percent=round(a.correct/a.total*100), created_at=a.created_at) for a in attempts],
+        questions=[dict(id=questions[l.id].id, topic=l.title, prompt=questions[l.id].prompt, options=questions[l.id].options,
+            **(dict(correct_index=questions[l.id].correct_index, explanation=questions[l.id].explanation) if is_staff else {}))
+            for l in lessons if l.id in questions] if unlocked and ready else [])
+
+
+class QuizSubmission(Strict):
+    answers: dict[int, StrictInt] = Field(max_length=500)
+
+
+@router.post("/courses/{course_id}/quiz/attempts")
+def submit_quiz(course_id: int, body: QuizSubmission, user=Depends(current), s: Session = Depends(db)):
+    is_staff, _, ready, lessons, questions = quiz_data(s, course_id, user, require_open=True)
+    if is_staff:
+        raise HTTPException(403, "Попытки доступны ученикам; для преподавателя открыт просмотр ответов")
+    if not ready:
+        raise HTTPException(409, "Квиз ещё не подготовлен для всех уроков")
+    ordered = [questions[l.id] for l in lessons]
+    if set(body.answers) != {q.id for q in ordered} or any(type(v) is not int or v not in range(4) for v in body.answers.values()):
+        raise HTTPException(422, "Выберите один ответ на каждый вопрос")
+    correct = sum(body.answers[q.id] == q.correct_index for q in ordered)
+    attempt = QuizAttempt(user_id=user.id, course_id=course_id, correct=correct, total=len(ordered),
+        answers=[dict(question_id=q.id, selected=body.answers[q.id], correct=body.answers[q.id] == q.correct_index, prompt=q.prompt, options=q.options) for q in ordered])
+    s.add(attempt)
+    s.flush()
+    return dict(id=attempt.id, correct=correct, total=attempt.total, percent=round(correct/attempt.total*100))

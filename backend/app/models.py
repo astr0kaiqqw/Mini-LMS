@@ -53,7 +53,6 @@ class UserProfile(Base):
     bio: Mapped[str] = mapped_column(String(500), default="", server_default="")
 
 
-# TODO: Add quizzes, questions, options, attempts and answers when their contract is agreed.
 # TODO: Add assignment submissions and measure query performance.
 
 
@@ -224,3 +223,32 @@ class CourseTeacher(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True, index=True
     )
+
+
+class QuizQuestion(Base):
+    __tablename__ = "quiz_questions"
+    __table_args__ = (
+        CheckConstraint("length(trim(prompt)) > 0", name="ck_quiz_prompt"),
+        CheckConstraint("json_array_length(options) = 4", name="ck_quiz_options"),
+        CheckConstraint("correct_index BETWEEN 0 AND 3", name="ck_quiz_correct"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lesson_id: Mapped[int] = mapped_column(ForeignKey("lessons.id", ondelete="CASCADE"), unique=True)
+    prompt: Mapped[str] = mapped_column(String(3000))
+    options: Mapped[list] = mapped_column(JSON)
+    correct_index: Mapped[int] = mapped_column()
+    explanation: Mapped[str] = mapped_column(String(20000))
+
+
+class QuizAttempt(Base):
+    __tablename__ = "quiz_attempts"
+    __table_args__ = (
+        CheckConstraint("total > 0 AND correct >= 0 AND correct <= total", name="ck_quiz_attempt_score"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
+    answers: Mapped[list] = mapped_column(JSON)
+    correct: Mapped[int] = mapped_column()
+    total: Mapped[int] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

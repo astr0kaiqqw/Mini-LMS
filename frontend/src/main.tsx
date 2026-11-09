@@ -447,6 +447,7 @@ function CourseView() {
               </section>
             ))}
           </section>
+          <CourseQuiz key={c.id} courseId={c.id} />
         </>
       )}
     </>
@@ -1362,3 +1363,55 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </React.StrictMode>,
 );
+
+
+function CourseQuiz({ courseId }: { courseId: number }) {
+  const { data: q, error, reload } = useLoad(`/courses/${courseId}/quiz`);
+  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [opened, setOpened] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [result, setResult] = useState<Row | null>(null);
+  return <section className="panel quiz-panel">
+    <h2>Итоговый квиз</h2>
+    <p>По всем темам курса · один правильный ответ на вопрос</p>
+    {error && <p role="alert">{error}</p>}
+    {!q && !error && <p>Загрузка квиза…</p>}
+    {q && <>
+      {!q.unlocked && <p role="status">🔒 Завершите все уроки курса, чтобы открыть квиз.</p>}
+      {q.unlocked && !q.ready && <p>Вопросы ещё не подготовлены для всех уроков.</p>}
+      <button disabled={!q.unlocked || !q.ready} onClick={() => setOpened(!opened)}>
+        {opened ? "Скрыть квиз" : q.staff ? "Просмотреть вопросы и ответы" : "Открыть квиз"}
+      </button>
+      {opened && q.unlocked && q.ready && <>
+        {q.staff ? <div className="quiz-table-wrap"><table className="quiz-table">
+          <thead><tr><th>Тема / вопрос</th><th>Варианты ответов</th><th>Правильный ответ</th></tr></thead>
+          <tbody>{q.questions.map((item: Row, i: number) => <tr key={item.id}>
+            <td><strong>{i + 1}. {item.topic}</strong><p>{item.prompt}</p></td>
+            <td>{item.options.map((text: string, index: number) => <p key={index}>{index + 1}. {text}</p>)}</td>
+            <td><strong>{item.correct_index + 1}. {item.options[item.correct_index]}</strong></td>
+          </tr>)}</tbody>
+        </table></div> : <form onSubmit={async e => {
+          e.preventDefault(); setBusy(true); setMessage("");
+          try { setResult(await api(`/courses/${courseId}/quiz/attempts`, "POST", { answers })); reload(); }
+          catch (e) { setMessage((e as Error).message); }
+          finally { setBusy(false); }
+        }}>
+          {q.questions.map((item: Row, i: number) => <fieldset className="quiz-question" key={item.id}>
+            <legend>{i + 1}. {item.prompt}</legend>
+            {item.options.map((text: string, index: number) => <label className="quiz-option" key={index}>
+              <input type="radio" name={`question-${item.id}`} required checked={answers[item.id] === index}
+                onChange={() => { setAnswers({ ...answers, [item.id]: index }); setResult(null); }} />
+              <span>{text}</span>
+            </label>)}
+          </fieldset>)}
+          <button disabled={busy}>{busy ? "Проверяем…" : "Отправить ответы"}</button>
+        </form>}
+      </>}
+      {message && <p role="alert">{message}</p>}
+      {result && <p role="status">Результат: {result.correct} из {result.total} ({result.percent}%). Попытка сохранена.</p>}
+      {!q.staff && q.attempts.length > 0 && <><h3>Мои попытки</h3><ul>{q.attempts.map((a: Row) =>
+        <li key={a.id}>{new Date(a.created_at).toLocaleString("ru-RU")}: {a.correct} из {a.total} — {a.percent}%</li>)}</ul></>}
+    </>}
+  </section>;
+}

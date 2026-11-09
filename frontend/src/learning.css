@@ -115,3 +115,15 @@ button:disabled {
     flex-wrap: wrap;
   }
 }
+
+.quiz-panel { margin-top: 24px; }
+.quiz-question { margin: 24px 0; padding: 20px; border: 1px solid #cbd5e1; border-radius: 12px; }
+.quiz-question legend { font-weight: 600; padding: 0 8px; }
+.quiz-option { display: flex; align-items: flex-start; gap: 12px; margin: 16px 0; cursor: pointer; }
+.quiz-option input { width: auto; margin-top: 5px; flex-shrink: 0; }
+.quiz-table-wrap { overflow-x: auto; margin-top: 24px; }
+.quiz-table { width: 100%; border-collapse: collapse; min-width: 700px; }
+.quiz-table th, .quiz-table td { text-align: left; vertical-align: top; padding: 16px; border-bottom: 1px solid #cbd5e1; }
+.quiz-table th { background: #eef2ff; }
+.quiz-table td:first-child { width: 25%; }
+.quiz-table td:last-child { width: 30%; }
