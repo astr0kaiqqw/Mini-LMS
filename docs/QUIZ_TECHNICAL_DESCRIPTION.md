@@ -59,3 +59,31 @@ erDiagram
     lessons ||--o{ lesson_progress : "отмечен"
 ```
 
+## 6. API
+
+Префикс `/api`, сессия в cookie `lms_session`, ошибки `{"detail": "..."}`.
+
+| Метод и путь | Ответ | Ошибки |
+|---|---|---|
+| `GET /courses/{course_id}/quiz` | `unlocked, ready, staff, total, attempts[{id, correct, total, percent, created_at}], questions[{id, topic, prompt, options}]`. Вопросы пустые, пока квиз закрыт. Для персонала в вопросах ещё `correct_index, explanation` | 401, 403 (не записан, черновик курса, чужой курс), 404 (курса нет) |
+| `POST /courses/{course_id}/quiz/attempts` | `{id, correct, total, percent}` | 401; 403 (уроки не завершены, не записан, персонал); 409 (вопросы есть не у всех уроков); 422 (не все ответы, индекс вне 0–3, не число, чужой вопрос, лишние поля) |
+
+Тело отправки: `{"answers": {"<question_id>": <индекс 0–3>, ...}}`.
+
+```mermaid
+sequenceDiagram
+    actor S as Ученик
+    participant UI as CourseQuiz
+    participant API as FastAPI
+    participant DB as PostgreSQL
+    S->>UI: открывает курс
+    UI->>API: GET /api/courses/{id}/quiz
+    API->>DB: access(), завершены ли все уроки, есть ли вопросы
+    API-->>UI: unlocked, ready, вопросы без ключей, история попыток
+    S->>UI: отвечает и нажимает «Отправить» (кнопка блокируется)
+    UI->>API: POST /api/courses/{id}/quiz/attempts {answers}
+    API->>DB: повторная проверка уроков, подсчёт, INSERT quiz_attempts
+    API-->>UI: correct, total, percent
+    UI->>API: GET /api/courses/{id}/quiz (обновить историю)
+```
+
