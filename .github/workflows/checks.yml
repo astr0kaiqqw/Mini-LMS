@@ -1,6 +1,30 @@
 name: Project checks
 on: [push, pull_request]
 jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare environment
+        run: cp .env.example .env
+      - name: Validate Compose config
+        run: docker compose config --quiet
+      - name: Build application images
+        run: docker compose build frontend backend
+      - name: Start application
+        run: docker compose up -d
+      - name: Smoke test
+        run: |
+          curl --fail --silent --show-error --retry 15 --retry-all-errors --retry-delay 2 http://127.0.0.1:5173/ > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 http://127.0.0.1:5173/health/live > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 http://127.0.0.1:5173/api/demo/courses > /dev/null
+      - name: Show container logs on failure
+        if: failure()
+        run: docker compose logs
+      - name: Stop application
+        if: always()
+        run: docker compose down -v
+
   frontend:
     runs-on: ubuntu-latest
     steps:

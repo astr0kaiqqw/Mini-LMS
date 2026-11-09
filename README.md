@@ -32,18 +32,13 @@ npm run dev
 Открыть http://127.0.0.1:5173. Каталог и страница курса читают demo API: без backend они показывают ошибку и кнопку «Повторить», локальные примеры не подставляются. Остальные макеты работают и без backend. Маршруты: /, /courses, /courses/data-thinking, /courses/data-thinking/lessons/1, /assignments, /quiz, /profile, /login, /register, /teacher, /admin, /roadmap. Для панелей выберите соответствующую demo-роль в меню. Роль и ответы при перезагрузке сбрасываются.
 
 ## Полный локальный запуск
-Нужны Python 3.13+, Docker Desktop с запущенным engine и свободный порт 55432. Команды из корня проекта:
+Нужны Docker Desktop и Make. Frontend, backend и PostgreSQL запускаются одной командой из корня проекта:
 ```bash
-cp .env.example .env
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r backend/requirements.lock.txt
-docker compose up -d --wait postgres
-alembic upgrade head
-PYTHONPATH=backend python database/seeds/demo_users.py
-PYTHONPATH=backend uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+make up
 ```
-По умолчанию внешний порт БД — 55432, внутренний — 5432. Если внешний порт занят, измените POSTGRES_PORT и DATABASE_URL в .env согласованно. Пароль .env.example — только пример для локальной машины, не секрет для размещения. В другой вкладке терминала запустите frontend командами выше. Vite проксирует /api и /health на порт 8000.
+`make up` создаёт `.env` из примера, собирает и запускает весь проект. Frontend: http://127.0.0.1:5173, backend: http://127.0.0.1:8000, PostgreSQL: порт 55432. Порты можно изменить в `.env`. Миграции и demo seed выполняются при старте backend.
+
+Основные команды: `make logs`, `make ps`, `make test`, `make restart`, `make down`. Полный список: `make help`. Данные PostgreSQL сохраняются после `make down`.
 
 API docs: http://127.0.0.1:8000/docs
 - GET /health/live — процесс работает, режим demo.
@@ -67,7 +62,7 @@ npm run build
 
 GitHub Actions собирает frontend, запускает API-тесты, миграции, seed и проверки на PostgreSQL 17. Наличие workflow не означает успешный удалённый запуск: результат смотреть во вкладке Actions. Фактический локальный отчёт — [VALIDATION](docs/VALIDATION.md).
 
-Остановка: Ctrl+C в терминалах, `docker compose stop`. Данные PostgreSQL остаются в volume. Не используйте `docker compose down -v`, если хотите сохранить их.
+Остановка: `make down`. Данные PostgreSQL остаются в volume. Не используйте `docker compose down -v`, если хотите сохранить их.
 
 ## Структура
 ```text
