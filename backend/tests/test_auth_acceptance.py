@@ -212,3 +212,46 @@ def test_au13_permission_matrix(actors):
             if got != want:
                 mismatches.append(f"{method} {url} as {who}: expected {want}, got {got}")
     assert not mismatches, "\n".join(mismatches)
+
+
+# ---------- Confirmed gaps (AUTH_TECHNICAL_DESCRIPTION, section 8)
+
+@pytest.mark.xfail(strict=True, reason="AUTH-GAP-1: no brute-force protection on login")
+def test_au20_login_locked_after_five_failures(env):
+    for i in range(5):
+        _, r = raw_login(STUDENT, f"guess-{i}")
+        assert r.status_code == 401
+    _, r = raw_login(STUDENT, "guess-6")
+    assert r.status_code == 429
+
+
+@pytest.mark.xfail(strict=True, reason="AUTH-GAP-2: trivial passwords are accepted")
+def test_au21_trivial_password_rejected(env):
+    _, r = register("weak@demo.example.test", password="11111111")
+    assert r.status_code == 422
+
+
+@pytest.mark.xfail(strict=True, reason="AUTH-GAP-3: no way to change password")
+def test_au22_user_can_change_password(env):
+    client, _ = raw_login(STUDENT)
+    r = client.post("/api/me/password", json={"current_password": PW, "new_password": "NewPass2026!"})
+    assert r.status_code == 200
+    assert raw_login(STUDENT, "NewPass2026!")[1].status_code == 200
+
+
+@pytest.mark.xfail(strict=True, reason="AUTH-GAP-4: expired sessions are never deleted")
+def test_au23_expired_sessions_cleaned_on_login(env):
+    s, _ = env
+    client, _ = raw_login(STUDENT)
+    uid = client.get("/api/me").json()["id"]
+    for row in s.scalars(select(LoginSession).where(LoginSession.user_id == uid)):
+        row.expires_at = now() - timedelta(days=1)
+    s.flush()
+    raw_login(STUDENT)
+    assert sessions_of(s, uid, expired_only=True) == 0
+
+
+@pytest.mark.xfail(strict=True, reason="AUTH-GAP-5: staff can self-enroll and appear as students")
+def test_au24_staff_cannot_self_enroll(actors):
+    s, clients, c, ids = actors
+    assert clients["foreign"].post(f"/api/courses/{c.id}/enroll").status_code == 403
