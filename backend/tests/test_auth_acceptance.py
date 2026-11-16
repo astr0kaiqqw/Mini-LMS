@@ -126,3 +126,28 @@ def test_au10_forged_and_expired_sessions_rejected(env):
         row.expires_at = now() - timedelta(seconds=1)
     s.flush()
     assert client.get("/api/me").status_code == 401
+
+
+# ---------- Roles
+
+def test_au11_role_change_applies_to_existing_session(env):
+    admin, _ = raw_login(ADMIN)
+    user, r = register("future.teacher@demo.example.test")
+    uid = r.json()["id"]
+    assert user.get("/api/staff/courses").status_code == 403
+    assert admin.put(f"/api/admin/users/{uid}/role", json={"role": "teacher"}).status_code == 200
+    assert user.get("/api/staff/courses").status_code == 200
+    assert admin.put(f"/api/admin/users/{uid}/role", json={"role": "student"}).status_code == 200
+    assert user.get("/api/staff/courses").status_code == 403
+
+
+def test_au12_role_management_rules(env):
+    admin, _ = raw_login(ADMIN)
+    teacher, _ = raw_login(TEACHER)
+    _, r = register("target@demo.example.test")
+    target = r.json()["id"]
+    admin_id = admin.get("/api/me").json()["id"]
+    assert teacher.put(f"/api/admin/users/{target}/role", json={"role": "teacher"}).status_code == 403
+    assert admin.put(f"/api/admin/users/{admin_id}/role", json={"role": "student"}).status_code == 403
+    assert admin.put(f"/api/admin/users/{target}/role", json={"role": "root"}).status_code == 422
+    assert admin.put("/api/admin/users/99999999/role", json={"role": "teacher"}).status_code == 404
