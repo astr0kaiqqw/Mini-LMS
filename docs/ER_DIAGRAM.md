@@ -4,6 +4,55 @@
 
 GitHub показывает диаграмму сразу. В VS Code нужно расширение с поддержкой Mermaid (например, «Markdown Preview Mermaid Support»).
 
+## Авторизация (крупно)
+
+Сверено 16 ноября 2026 с `main` (`0ab8cc0`): схема авторизации с 9 ноября не менялась.
+
+```mermaid
+erDiagram
+    roles ||--o{ users : "одна роль"
+    users ||--o| credentials : "пароль (может не быть)"
+    users ||--o{ login_sessions : "активные входы"
+    users ||--o| user_profiles : "профиль"
+    users ||--o{ courses : "автор курса"
+    courses ||--o{ course_teachers : "назначенные преподаватели"
+    users ||--o{ course_teachers : "назначен"
+    users ||--o{ enrollments : "записан"
+    courses ||--o{ enrollments : "ученики"
+
+    roles {
+        int id PK
+        string name "student | teacher | admin"
+    }
+    users {
+        int id PK
+        string email "UNIQUE, нижний регистр"
+        string display_name
+        int role_id FK "меняет только админ"
+    }
+    credentials {
+        int user_id PK,FK "CASCADE"
+        string password_hash "pbkdf2_sha256, 600000 итераций, соль"
+    }
+    login_sessions {
+        string token_hash PK "SHA-256 от токена из cookie"
+        int user_id FK "CASCADE"
+        timestamptz expires_at "вход + 7 дней"
+    }
+    course_teachers {
+        int course_id PK,FK
+        int user_id PK,FK
+    }
+    enrollments {
+        int user_id PK,FK
+        int course_id PK,FK
+    }
+```
+
+Как читать: роль одна на пользователя и проверяется по БД при каждом запросе, поэтому смена роли действует сразу. В cookie лежит случайный токен, а в БД только его хеш: утечка таблицы `login_sessions` не даёт войти. У старых seed-аккаунтов нет строки в `credentials`, войти под ними нельзя. Доступ преподавателя к курсу: он автор (`courses.teacher_id`) или назначен (`course_teachers`). Доступ ученика: курс опубликован и есть строка в `enrollments`.
+
+Чего в схеме нет (пробелы AUTH-GAP-1 и AUTH-GAP-4, см. [AUTH_TECHNICAL_DESCRIPTION.md](AUTH_TECHNICAL_DESCRIPTION.md)): учёта неудачных входов и индекса `login_sessions (expires_at)` для очистки просроченных сессий.
+
 ## Квиз (крупно)
 
 ```mermaid
