@@ -151,3 +151,64 @@ def test_au12_role_management_rules(env):
     assert admin.put(f"/api/admin/users/{admin_id}/role", json={"role": "student"}).status_code == 403
     assert admin.put(f"/api/admin/users/{target}/role", json={"role": "root"}).status_code == 422
     assert admin.put("/api/admin/users/99999999/role", json={"role": "teacher"}).status_code == 404
+
+
+ROLES = ("anon", "student", "other", "teacher", "foreign", "admin")
+
+
+@pytest.fixture
+def actors(env):
+    s, login = env
+    admin = login(ADMIN)
+    foreign, r = register("foreign.teacher@demo.example.test", name="Чужой преподаватель")
+    assert admin.put(f"/api/admin/users/{r.json()['id']}/role", json={"role": "teacher"}).status_code == 200
+    clients = dict(anon=TestClient(app), student=login(STUDENT), other=login(OTHER),
+                   teacher=login(TEACHER), foreign=foreign, admin=admin)
+    c = course(s)
+    ids = dict(c=c.id, m=s.scalar(select(Module.id).where(Module.course_id == c.id).order_by(Module.position)),
+               l=lessons_for(s, c.id)[0].id, sid=clients["student"].get("/api/me").json()["id"])
+    return s, clients, c, ids
+
+
+def test_au13_permission_matrix(actors):
+    """Every role against every protected endpoint; see AUTH_TECHNICAL_DESCRIPTION, section 5."""
+    s, clients, c, ids = actors
+    course_body = dict(slug=c.slug, title=c.title, description=c.description, status=c.status)
+    lesson = dict(title="Урок", position=1, summary="", content="", practice="", duration_minutes=15)
+    grade = dict(user_id=ids["sid"], kind="course", lesson_id=None, score=80, comment="")
+    #            method, path,                                             body,         anon student other teacher foreign admin
+    matrix = [
+        ("GET", "/api/me", None,                                                         (401, 200, 200, 200, 200, 200)),
+        ("PATCH", "/api/me", dict(display_name="Имя", bio=""),                           (401, 200, 200, 200, 200, 200)),
+        ("GET", "/api/courses", None,                                                    (200, 200, 200, 200, 200, 200)),
+        ("GET", "/api/courses/{c}", None,                                                (401, 200, 403, 200, 403, 200)),
+        ("GET", "/api/lessons/{l}", None,                                                (401, 200, 403, 200, 403, 200)),
+        ("POST", "/api/lessons/{l}/complete", None,                                      (401, 200, 403, 200, 403, 200)),
+        ("GET", "/api/me/courses", None,                                                 (401, 200, 200, 200, 200, 200)),
+        ("GET", "/api/me/gradebook", None,                                               (401, 200, 200, 200, 200, 200)),
+        ("GET", "/api/courses/{c}/quiz", None,                                           (401, 200, 403, 200, 403, 200)),
+        ("GET", "/api/staff/courses", None,                                              (401, 403, 403, 200, 200, 200)),
+        ("GET", "/api/staff/students", None,                                             (401, 403, 403, 200, 200, 200)),
+        ("GET", "/api/staff/students?course_id={c}", None,                               (401, 403, 403, 200, 403, 200)),
+        ("GET", "/api/staff/courses/{c}/students/{sid}", None,                           (401, 403, 403, 200, 403, 200)),
+        ("PUT", "/api/staff/courses/{c}/grades", grade,                                  (401, 403, 403, 200, 403, 200)),
+        ("POST", "/api/staff/courses", dict(slug="matrix-probe", title="Probe"),         (401, 403, 403, 200, 200, 200)),
+        ("PUT", "/api/staff/courses/{c}", course_body,                                   (401, 403, 403, 200, 403, 200)),
+        ("PUT", "/api/staff/modules/{m}", dict(title="Модуль", position=1),              (401, 403, 403, 200, 403, 200)),
+        ("PUT", "/api/staff/lessons/{l}", lesson,                                        (401, 403, 403, 200, 403, 200)),
+        ("DELETE", "/api/staff/courses/{c}", None,                                       (401, 403, 403, None, 403, None)),
+        ("GET", "/api/admin/users", None,                                                (401, 403, 403, 403, 403, 200)),
+        ("PUT", "/api/admin/users/{sid}/role", dict(role="student"),                     (401, 403, 403, 403, 403, 200)),
+    ]
+    mismatches = []
+    for method, path, body, expected in matrix:
+        url = path.format(**ids)
+        for who, want in zip(ROLES, expected):
+            if want is None:  # destructive call for an authorized role: not part of the access check
+                continue
+            savepoint = s.begin_nested()
+            got = clients[who].request(method, url, json=body).status_code
+            savepoint.rollback()
+            if got != want:
+                mismatches.append(f"{method} {url} as {who}: expected {want}, got {got}")
+    assert not mismatches, "\n".join(mismatches)
