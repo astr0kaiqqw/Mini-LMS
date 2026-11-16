@@ -68,3 +68,5 @@ make up
 Итоговые квизы: [доступ, таблицы и проверки](docs/COURSE_QUIZZES.md). После заполнения курсов запускай `PYTHONPATH=backend python database/seeds/course_quizzes.py`.
 
 Аналитика квизов: [техническое описание](docs/QUIZ_TECHNICAL_DESCRIPTION.md), [ER-диаграмма](docs/ER_DIAGRAM.md), [сценарии приёмки](testing/QUIZ_ACCEPTANCE.md), [задачи](docs/QUIZ_TASKS.md), [отчёт аналитика W11](docs/ANALYSIS_W11_REPORT.md).
+
+Авторизация и права: [техническое описание и матрица прав](docs/AUTH_TECHNICAL_DESCRIPTION.md), [сценарии приёмки](testing/AUTH_ACCEPTANCE.md), [задания команде](docs/AUTH_TASKS.md), [отчёт аналитика W12](docs/ANALYSIS_W12_REPORT.md).
