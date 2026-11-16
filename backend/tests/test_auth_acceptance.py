@@ -65,3 +65,39 @@ def test_au04_session_cookie_is_protected_and_no_secrets_returned(env):
     assert "lms_session=" in cookie and "httponly" in cookie
     assert "samesite=strict" in cookie and "max-age=604800" in cookie
     assert not any(word in r.text.lower() for word in ("password", "hash", "token"))
+
+
+# ---------- Registration
+
+def test_au05_registration_creates_logged_in_student(env):
+    client, r = register(" New.User@Demo.Example.Test ", name="  Новый  ")
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert (body["role"], body["email"], body["display_name"]) == ("student", "new.user@demo.example.test", "Новый")
+    assert client.get("/api/me").status_code == 200
+
+
+def test_au06_duplicate_email_rejected_case_insensitively(env):
+    register("dup@demo.example.test")
+    _, r = register("DUP@demo.example.test")
+    assert r.status_code == 409
+
+
+@pytest.mark.parametrize("case, body", [
+    ("short_password", dict(password="1234567")),
+    ("bad_email", dict(email="not-an-email")),
+    ("blank_name", dict(name="   ")),
+    ("role_escalation", dict(role="admin")),
+])
+def test_au07_invalid_registration_rejected(env, case, body):
+    email = body.pop("email", f"{case}@demo.example.test")
+    _, r = register(email, **body)
+    assert r.status_code == 422
+
+
+def test_au08_profile_cannot_change_role_or_email(env):
+    client, _ = raw_login(STUDENT)
+    for field, value in (("role", "admin"), ("email", "x@demo.example.test")):
+        r = client.patch("/api/me", json={"display_name": "Имя", "bio": "", field: value})
+        assert r.status_code == 422
+    assert client.get("/api/me").json()["role"] == "student"
