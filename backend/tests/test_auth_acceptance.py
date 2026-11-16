@@ -101,3 +101,28 @@ def test_au08_profile_cannot_change_role_or_email(env):
         r = client.patch("/api/me", json={"display_name": "Имя", "bio": "", field: value})
         assert r.status_code == 422
     assert client.get("/api/me").json()["role"] == "student"
+
+
+# ---------- Sessions
+
+def test_au09_logout_kills_the_session(env):
+    client, _ = raw_login(STUDENT)
+    token = client.cookies.get("lms_session")
+    assert client.post("/api/auth/logout").status_code == 200
+    stale = TestClient(app)
+    stale.cookies.set("lms_session", token)
+    assert stale.get("/api/me").status_code == 401
+    assert TestClient(app).post("/api/auth/logout").status_code == 200
+
+
+def test_au10_forged_and_expired_sessions_rejected(env):
+    s, _ = env
+    forged = TestClient(app)
+    forged.cookies.set("lms_session", "forged-token")
+    assert forged.get("/api/me").status_code == 401
+    client, _ = raw_login(STUDENT)
+    uid = client.get("/api/me").json()["id"]
+    for row in s.scalars(select(LoginSession).where(LoginSession.user_id == uid)):
+        row.expires_at = now() - timedelta(seconds=1)
+    s.flush()
+    assert client.get("/api/me").status_code == 401
