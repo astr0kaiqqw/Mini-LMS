@@ -43,3 +43,36 @@
 | A15 | Каталог опубликованных курсов открыт без входа; страница курса — только после входа | `catalog()`, `course_detail()` |
 | A16 | Записаться на опубликованный курс может любой вошедший пользователь, в том числе персонал | `enroll()` (см. AUTH-GAP-5) |
 
+## 4. Сценарии
+
+```mermaid
+sequenceDiagram
+    actor U as Пользователь
+    participant UI as Frontend
+    participant API as FastAPI
+    participant DB as PostgreSQL
+    U->>UI: email + пароль
+    UI->>API: POST /api/auth/login
+    API->>DB: найти пользователя, credentials
+    API->>API: PBKDF2 (и для несуществующего email)
+    alt пароль верный
+        API->>DB: INSERT login_sessions (хеш токена, +7 дней)
+        API-->>UI: 200 + Set-Cookie lms_session (HttpOnly, SameSite=Strict)
+    else неверный
+        API-->>UI: 401 «Неверный email или пароль»
+    end
+    U->>UI: открывает урок
+    UI->>API: GET /api/lessons/{id} + cookie
+    API->>DB: сессия по хешу токена, срок, роль, запись на курс
+    API-->>UI: 200 / 401 / 403
+```
+
+```mermaid
+stateDiagram-v2
+    [*] --> Активна: вход или регистрация
+    Активна --> Удалена: выход
+    Активна --> Истекла: прошло 7 дней
+    Истекла --> [*]: сейчас строка остаётся в БД навсегда (AUTH-GAP-4)
+    Удалена --> [*]
+```
+
