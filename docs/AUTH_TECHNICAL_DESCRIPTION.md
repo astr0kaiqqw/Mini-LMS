@@ -99,3 +99,15 @@ stateDiagram-v2
 
 Вывод: ученик не попадает в разделы персонала, преподаватель — в чужие курсы и администрирование, гость — никуда, кроме каталога. Отклонений от правил A11–A15 нет.
 
+## 6. API
+
+| Метод и путь | Тело | Ответ | Ошибки |
+|---|---|---|---|
+| `POST /api/auth/register` | `email, password, display_name` | 201, профиль, cookie | 409 email занят; 422 короткий пароль, неверный email, пустое имя, лишние поля |
+| `POST /api/auth/login` | `email, password` | 200, профиль, cookie | 401 |
+| `POST /api/auth/logout` | — | 200, cookie удалена | — |
+| `GET /api/me` | — | `id, email, display_name, role, bio` | 401 |
+| `PATCH /api/me` | `display_name, bio` | профиль | 401, 422 |
+| `GET /api/admin/users` | — | список пользователей | 401, 403 |
+| `PUT /api/admin/users/{id}/role` | `role` | профиль | 401, 403 (не админ или своя роль), 404, 422 |
+
