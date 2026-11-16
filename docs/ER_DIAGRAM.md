@@ -224,6 +224,8 @@ erDiagram
 
 ## Замечания аналитика к схеме
 
+Обновление `0006_auth_hardening`: таблица `login_attempts` хранит `email` (PK, нижний регистр), `failed_count` (int, >= 0), `first_failed_at` (timestamptz, NOT NULL), `locked_until` (timestamptz, nullable). Она не связана FK с пользователем: учитываются и неизвестные email. В `login_sessions` добавлен индекс `expires_at`; индекс `user_id` сохраняется из `0003`. Результаты миграции и EXPLAIN — в [DB_TEST_REPORT.md](DB_TEST_REPORT.md).
+
 | № | Наблюдение | Последствие | Предложение |
 |---|---|---|---|
 | E1 | Результат квиза живёт в `quiz_attempts`, а не в `grades` | Журнал и карточка ученика его не видят (GAP-1, GAP-2) | Не копировать в `grades`, а показывать лучшую попытку расчётом |

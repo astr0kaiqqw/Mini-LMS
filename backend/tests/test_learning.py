@@ -22,6 +22,8 @@ from app.models import (
     LessonProgress,
     Grade,
     Credential,
+    UserProfile,
+    LoginSession,
 )
 from app.security import hash_password, verify_password
 
@@ -381,6 +383,32 @@ def test_lesson_permissions_and_video_constraint(env):
                 )
             )
             s.flush()
+
+
+@pytest.mark.parametrize("selected_role", ["student", "teacher"])
+def test_register_persists_selected_role_and_session(env, selected_role):
+    s, _ = env
+    with TestClient(app) as client:
+        email = f"role-{uuid.uuid4().hex}@example.test"
+        response = client.post("/api/auth/register", json={
+            "email": email, "display_name": "Новый пользователь",
+            "password": "Secret123", "role": selected_role,
+        })
+        assert response.status_code == 201, response.text
+        uid = response.json()["id"]
+        s.expire_all()
+        user = s.get(User, uid)
+        assert user.email == email
+        assert s.get(Role, user.role_id).name == selected_role
+        assert s.get(UserProfile, uid) is not None
+        assert verify_password("Secret123", s.get(Credential, uid).password_hash)
+        assert s.scalar(select(LoginSession).where(LoginSession.user_id == uid)) is not None
+        assert client.get("/api/me").json()["role"] == selected_role
+        client.post("/api/auth/logout")
+        assert client.post("/api/auth/login", json={
+            "email": email, "password": "Secret123",
+        }).json()["role"] == selected_role
+        assert client.get("/api/staff/courses").status_code == (200 if selected_role == "teacher" else 403)
 
 
 def test_register_creates_student_session(env):

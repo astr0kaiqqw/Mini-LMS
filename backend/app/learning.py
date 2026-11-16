@@ -15,6 +15,7 @@ from .models import (
     UserProfile,
     Credential,
     LoginSession,
+    LoginAttempt,
     Course,
     Module,
     Lesson,
@@ -118,6 +119,7 @@ class Login(Strict):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=False)
     email: str = Field(max_length=254)
     password: str = Field(min_length=1, max_length=200)
+    role: Literal["student", "teacher", "admin"] | None = None
 
 
 @router.post("/auth/login")
@@ -131,7 +133,20 @@ def login(data: Login, response: Response, s: Session = Depends(db)):
         else verify_password(data.password, "pbkdf2_sha256$600000$dummy$invalid")
     )
     if not valid:
+        s.execute(
+            insert(LoginAttempt).values(
+                email=data.email.strip().lower(), failed_count=1, first_failed_at=now(),
+            ).on_conflict_do_update(
+                index_elements=[LoginAttempt.email],
+                set_={"failed_count": LoginAttempt.failed_count + 1},
+            )
+        )
+        # Persist failed attempts even though the HTTP request returns an error.
+        s.commit()
         raise HTTPException(401, "Неверный email или пароль")
+    if data.role is not None and role(s, user) != data.role:
+        raise HTTPException(403, "Выбрана неверная роль аккаунта")
+    s.execute(delete(LoginAttempt).where(LoginAttempt.email == user.email))
     return start_session(s, response, user)
 
 
@@ -159,6 +174,7 @@ class Register(Login):
     email: str = Field(max_length=254, pattern=r"^\s*[^@\s]+@[^@\s]+\s*$")
     display_name: str = Field(min_length=1, max_length=100)
     password: str = Field(min_length=8, max_length=200)
+    role: Literal["student", "teacher"] = "student"
 
 
 @router.post("/auth/register", status_code=201)
@@ -168,8 +184,8 @@ def register(data: Register, response: Response, s: Session = Depends(db)):
         raise HTTPException(422, "Укажите имя")
     if s.scalar(select(User.id).where(User.email == email)):
         raise HTTPException(409, "Этот email уже зарегистрирован")
-    student = s.scalar(select(Role.id).where(Role.name == "student"))
-    user = User(email=email, display_name=name, role_id=student)
+    role_id = s.scalar(select(Role.id).where(Role.name == data.role))
+    user = User(email=email, display_name=name, role_id=role_id)
     s.add(user)
     s.flush()
     s.add(Credential(user_id=user.id, password_hash=hash_password(data.password)))
@@ -736,6 +752,20 @@ def admin_users(user=Depends(staff), s: Session = Depends(db)):
     if role(s, user) != "admin":
         raise HTTPException(403, "Только администратор")
     return [user_dict(s, u) for u in s.scalars(select(User).order_by(User.id))]
+
+
+@router.get("/admin/students")
+def admin_students(q: str = "", user=Depends(staff), s: Session = Depends(db)):
+    if role(s, user) != "admin":
+        raise HTTPException(403, "Только администратор")
+    query = select(User).join(Role).where(Role.name == "student")
+    if q.strip():
+        search = q.strip()
+        query = query.where(
+            User.display_name.icontains(search, autoescape=True)
+            | User.email.icontains(search, autoescape=True)
+        )
+    return [user_dict(s, u) for u in s.scalars(query.order_by(User.id.desc()))]
 
 
 class RoleInput(Strict):

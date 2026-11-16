@@ -12,6 +12,7 @@ import {
   NavLink,
   Routes,
   Route,
+  Navigate,
   useParams,
   useNavigate,
 } from "react-router-dom";
@@ -200,9 +201,10 @@ function App() {
                 <p>Проверяем сессию…</p>
               ) : (
                 <Routes>
-                  <Route path="/" element={<Catalog />} />
+                  <Route path="/" element={user ? <Catalog /> : <Navigate to="/register" replace />} />
                   <Route path="/courses" element={<Catalog />} />
                   <Route path="/login" element={<Login onLogin={setUser} />} />
+                  <Route path="/admin/login" element={<Login admin onLogin={setUser} />} />
                   <Route
                     path="/register"
                     element={<Login register onLogin={setUser} />}
@@ -259,7 +261,7 @@ function App() {
                     path="/teacher/students"
                     element={
                       <Guard staff>
-                        <Students />
+                        {user?.role === "admin" ? <AllStudents /> : <Students />}
                       </Guard>
                     }
                   />
@@ -295,9 +297,11 @@ function App() {
 function Login({
   onLogin,
   register = false,
+  admin = false,
 }: {
   onLogin: (u: Row) => void;
   register?: boolean;
+  admin?: boolean;
 }) {
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -305,10 +309,10 @@ function Login({
   return (
     <>
       <Heading
-        title={register ? "Начните свой маршрут." : "Рады видеть вас снова."}
+        title={register ? "Регистрация" : admin ? "Вход администратора" : "Вход"}
         text={
           register
-            ? "Создайте аккаунт ученика и запишитесь на курс."
+            ? "Выберите роль и создайте аккаунт."
             : "Войдите, чтобы открыть свои уроки и результаты."
         }
       />
@@ -320,10 +324,11 @@ function Login({
           setError("");
           const f = Object.fromEntries(new FormData(e.currentTarget));
           try {
-            onLogin(
-              await api(register ? "/auth/register" : "/auth/login", "POST", f),
+            const account = await api(
+              register ? "/auth/register" : "/auth/login", "POST", f,
             );
-            navigate(register ? "/courses" : "/my");
+            onLogin(account);
+            navigate(account.role === "admin" ? "/admin" : account.role === "teacher" ? "/teacher" : "/my");
           } catch (e) {
             setError((e as Error).message);
           } finally {
@@ -331,6 +336,16 @@ function Login({
           }
         }}
       >
+        {!admin ? (
+          <label>
+            Роль
+            <select name="role" defaultValue="" required>
+              <option value="" disabled>Выберите роль</option>
+              <option value="student">Ученик</option>
+              <option value="teacher">Учитель</option>
+            </select>
+          </label>
+        ) : <input type="hidden" name="role" value="admin" />}
         {register && (
           <label>
             Имя
@@ -363,6 +378,7 @@ function Login({
         <Link to={register ? "/login" : "/register"}>
           {register ? "Уже есть аккаунт? Войти" : "Создать аккаунт"} →
         </Link>
+        {!register && !admin && <Link to="/admin/login">Вход администратора →</Link>}
       </form>
     </>
   );
@@ -770,6 +786,28 @@ function Profile({ onChange }: { onChange: (u: Row) => void }) {
       </form>
     </>
   );
+}
+function AllStudents() {
+  const [q, setQ] = useState("");
+  const { data, error, reload } = useLoad("/admin/students?" + new URLSearchParams({ q }));
+  return <>
+    <Heading title="Ученики" text="Все зарегистрированные ученики, включая тех, кто ещё не записан на курс." />
+    <div className="toolbar">
+      <label>Поиск по имени или почте
+        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} />
+      </label>
+      <button className="button secondary" onClick={reload}>Обновить список</button>
+    </div>
+    <State data={data} error={error} />
+    {data && <section className="panel table-wrap">
+      <table><thead><tr><th>ID</th><th>Имя</th><th>Логин (почта)</th><th>Роль</th></tr></thead>
+        <tbody>{data.map((u: Row) => <tr key={u.id}>
+          <td>{u.id}</td><td>{u.display_name}</td><td>{u.email}</td><td>Ученик</td>
+        </tr>)}</tbody>
+      </table>
+      {!data.length && <p>Ученики не найдены.</p>}
+    </section>}
+  </>;
 }
 function Students() {
   const courses = useLoad("/staff/courses");

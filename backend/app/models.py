@@ -113,7 +113,7 @@ class Lesson(Base):
     video_duration: Mapped[int | None] = mapped_column()
 
 
-# Learning and authentication records. Application roles never come from the client.
+# Learning and authentication records. Registration allows student/teacher only.
 from sqlalchemy import Boolean, Integer, Float, JSON, Index, text
 
 
@@ -131,7 +131,19 @@ class LoginSession(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class LoginAttempt(Base):
+    __tablename__ = "login_attempts"
+    __table_args__ = (
+        CheckConstraint("email = lower(email)", name="ck_login_attempts_email"),
+        CheckConstraint("failed_count >= 0", name="ck_login_attempts_failed_count"),
+    )
+    email: Mapped[str] = mapped_column(String(254), primary_key=True)
+    failed_count: Mapped[int] = mapped_column(Integer, server_default="0")
+    first_failed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Enrollment(Base):
