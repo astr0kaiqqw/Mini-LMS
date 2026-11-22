@@ -1499,16 +1499,16 @@ function Admin() {
     <>
       <Heading title="Пользователи" />
       <div className="account-tabs" role="group" aria-label="Тип аккаунта">
-        <button type="button" aria-pressed={role === "student"} onClick={() => setRole("student")}>Студенты</button>
-        <button type="button" aria-pressed={role === "teacher"} onClick={() => setRole("teacher")}>Преподаватели</button>
+        <button className="account-button" type="button" aria-pressed={role === "student"} onClick={() => setRole("student")}>Студенты</button>
+        <button className="account-button" type="button" aria-pressed={role === "teacher"} onClick={() => setRole("teacher")}>Преподаватели</button>
       </div>
       <State data={data} error={error} />
       {saveError && <p role="alert">{saveError}</p>}
       {issued && (
-        <div className="notice" role="status">
+        <div className="notice account-reset-notice" role="status">
           <p>Передайте код <strong><code>{issued.code}</code></strong> владельцу аккаунта <strong>{issued.accountId}</strong>.</p>
           <p>Действует до {new Date(issued.expiresAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}.</p>
-          <button type="button" onClick={() => setIssued(null)}>Скрыть код</button>
+          <button className="account-button" type="button" onClick={() => setIssued(null)}>Скрыть код</button>
         </div>
       )}
       {accounts?.length === 0 && <p>В этом разделе пока нет аккаунтов.</p>}
@@ -1537,7 +1537,9 @@ function Admin() {
                   </td>
                   <td>
                     <button
+                      className="account-button"
                       type="button"
+                      aria-label={`Выдать код сброса для ${u.display_name}, ${u.email}`}
                       disabled={issuing}
                       onClick={async () => {
                         setIssuing(true);
@@ -1553,7 +1555,7 @@ function Admin() {
                         }
                       }}
                     >
-                      Выдать код сброса
+                      Выдать код
                     </button>
                   </td>
                 </tr>

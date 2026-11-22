@@ -135,10 +135,55 @@ button:disabled {
   margin-bottom: 1rem;
 }
 
-.account-tabs [aria-pressed="true"] {
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: .25em;
+.account-button,
+.account-reset-notice .account-button {
+  min-height: 30px;
+  padding: 4px 10px;
+  border: 1px solid #d9e3d4;
+  border-radius: 7px;
+  background: #edf2e8;
+  color: #244c3e;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.account-button:hover:not(:disabled) {
+  background: #e1ebdb;
+  border-color: #c3d4bb;
+}
+
+.account-button:focus-visible {
+  outline: 2px solid #477863;
+  outline-offset: 2px;
+}
+
+.account-tabs .account-button[aria-pressed="true"] {
+  background: #214c3d;
+  border-color: #214c3d;
+  color: white;
+}
+
+.account-reset-notice {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px 16px;
+}
+
+.account-reset-notice p {
+  margin: 0;
+}
+
+.account-reset-notice code {
+  color: #214c3d;
+  letter-spacing: .08em;
+}
+
+.account-reset-notice .account-button {
+  margin-inline-start: auto;
+  background: #f4f7ef;
 }
 
 .account-table {
@@ -154,5 +199,6 @@ button:disabled {
 .account-table td {
   padding: .65rem;
   text-align: left;
-  border-bottom: 1px solid currentColor;
+  vertical-align: middle;
+  border-bottom: 1px solid #e3e7dd;
 }
