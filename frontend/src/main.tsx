@@ -376,7 +376,7 @@ function Login({
           {busy ? "Отправляем…" : register ? "Создать аккаунт" : "Войти"}
         </button>
         {error && <p role="alert">{error}</p>}
-        <Link to="/reset-password">Reset Passwords</Link>
+        {!admin && <Link to="/reset-password">Reset Passwords</Link>}
         <Link to={register ? "/login" : "/register"}>
           {register ? "Уже есть аккаунт? Войти" : "Создать аккаунт"} →
         </Link>
@@ -386,32 +386,30 @@ function Login({
   );
 }
 function ResetPassword({ onReset }: { onReset: () => void }) {
-  const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get("token"));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
 
   return (
     <>
-      <Heading title="Сброс пароля" />
+      <Heading title="Сброс пароля" text="Попросите администратора выдать вам код и сообщить ID аккаунта." />
       <form className="panel auth" onSubmit={async (event) => {
         event.preventDefault();
         setError("");
         const fields = new FormData(event.currentTarget);
         const password = fields.get("password");
-        if (token && password !== fields.get("confirm")) {
+        if (password !== fields.get("confirm")) {
           setError("Пароли не совпадают");
           return;
         }
         setBusy(true);
         try {
-          if (token) {
-            await api("/auth/password-reset/confirm", "POST", { token, password });
-            window.history.replaceState(window.history.state, "", window.location.pathname);
-            onReset();
-          } else {
-            await api("/auth/password-reset/request", "POST", { email: fields.get("email") });
-          }
+          await api("/auth/password-reset/confirm", "POST", {
+            account_id: fields.get("account_id"),
+            code: fields.get("code"),
+            password,
+          });
+          onReset();
           setDone(true);
         } catch (err) {
           setError((err as Error).message);
@@ -420,28 +418,28 @@ function ResetPassword({ onReset }: { onReset: () => void }) {
         }
       }}>
         {done ? (
-          <p role="status">{token ? "Пароль обновлён. Войдите с новым паролем." : "Если аккаунт существует, вы получите ссылку для сброса."}</p>
+          <p role="status">Пароль обновлён. Войдите с новым паролем.</p>
         ) : (
           <>
-            {token ? (
-              <>
-                <label>
-                  Новый пароль
-                  <input name="password" type="password" autoComplete="new-password" minLength={8} maxLength={200} required />
-                </label>
-                <label>
-                  Повторите пароль
-                  <input name="confirm" type="password" autoComplete="new-password" minLength={8} maxLength={200} required />
-                </label>
-              </>
-            ) : (
-              <label>
-                Email аккаунта
-                <input name="email" type="email" autoComplete="username" maxLength={254} required />
-              </label>
-            )}
+            <label>
+              ID аккаунта
+              <input name="account_id" inputMode="numeric" pattern="[0-9]{12}" minLength={12} maxLength={12} required />
+            </label>
+            <label>
+              Код сброса
+              <input name="code" autoComplete="one-time-code" autoCapitalize="characters" spellCheck={false}
+                pattern="[A-Za-z2-9]{4}" minLength={4} maxLength={4} required />
+            </label>
+            <label>
+              Новый пароль
+              <input name="password" type="password" autoComplete="new-password" minLength={8} maxLength={200} required />
+            </label>
+            <label>
+              Повторите пароль
+              <input name="confirm" type="password" autoComplete="new-password" minLength={8} maxLength={200} required />
+            </label>
             <button className="button" disabled={busy}>
-              {busy ? "Отправляем…" : token ? "Сохранить пароль" : "Отправить ссылку"}
+              {busy ? "Сохраняем…" : "Сохранить пароль"}
             </button>
           </>
         )}
@@ -1493,6 +1491,8 @@ function Admin() {
   const { data, error, reload } = useLoad("/admin/users");
   const [role, setRole] = useState<"student" | "teacher">("student");
   const [saveError, setSaveError] = useState("");
+  const [issuing, setIssuing] = useState(false);
+  const [issued, setIssued] = useState<{ accountId: string; code: string; expiresAt: string } | null>(null);
   const accounts = data?.filter((user: Row) => user.role === role);
 
   return (
@@ -1504,11 +1504,18 @@ function Admin() {
       </div>
       <State data={data} error={error} />
       {saveError && <p role="alert">{saveError}</p>}
+      {issued && (
+        <div className="notice" role="status">
+          <p>Передайте код <strong><code>{issued.code}</code></strong> владельцу аккаунта <strong>{issued.accountId}</strong>.</p>
+          <p>Действует до {new Date(issued.expiresAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}.</p>
+          <button type="button" onClick={() => setIssued(null)}>Скрыть код</button>
+        </div>
+      )}
       {accounts?.length === 0 && <p>В этом разделе пока нет аккаунтов.</p>}
       {!!accounts?.length && (
         <div className="panel account-table">
           <table aria-label={role === "student" ? "Студенты" : "Преподаватели"}>
-            <thead><tr><th>ID</th><th>Имя</th><th>Email</th><th>Пароль</th><th>Роль</th></tr></thead>
+            <thead><tr><th>ID</th><th>Имя</th><th>Email</th><th>Пароль</th><th>Роль</th><th>Сброс пароля</th></tr></thead>
             <tbody>
               {accounts.map((u: Row) => (
                 <tr key={u.id}>
@@ -1527,6 +1534,27 @@ function Admin() {
                       <option value="teacher">Преподаватель</option>
                       <option value="admin">Администратор</option>
                     </select>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      disabled={issuing}
+                      onClick={async () => {
+                        setIssuing(true);
+                        setIssued(null);
+                        setSaveError("");
+                        try {
+                          const result = await api(`/admin/users/${u.id}/password-reset-code`, "POST");
+                          setIssued({ accountId: u.account_id, code: result.code, expiresAt: result.expires_at });
+                        } catch (err) {
+                          setSaveError((err as Error).message);
+                        } finally {
+                          setIssuing(false);
+                        }
+                      }}
+                    >
+                      Выдать код сброса
+                    </button>
                   </td>
                 </tr>
               ))}

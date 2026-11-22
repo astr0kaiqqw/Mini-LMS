@@ -133,7 +133,8 @@ class PasswordReset(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
-    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    code_hash: Mapped[str] = mapped_column(String(300), unique=True)
+    failed_attempts: Mapped[int] = mapped_column(Integer, server_default="0")
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 

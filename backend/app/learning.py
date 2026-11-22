@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 import os
-import smtplib
 import secrets
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
@@ -28,10 +27,11 @@ from .models import (
     QuizQuestion,
     QuizAttempt,
 )
-from .reset_mail import send_reset_link
 from .security import hash_password, verify_password, token_hash
 
 router = APIRouter(prefix="/api")
+RESET_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+MAX_RESET_ATTEMPTS = 5
 
 
 def now():
@@ -199,55 +199,31 @@ def register(data: Register, response: Response, s: Session = Depends(db)):
     return start_session(s, response, user)
 
 
-class ResetRequest(Strict):
-    email: str = Field(max_length=254, pattern=r"^[^@\s]+@[^@\s]+$")
-
-
 class ResetConfirm(BaseModel):
-    token: str = Field(pattern=r"^[A-Za-z0-9_-]{43}$")
+    account_id: str = Field(pattern=r"^[0-9]{12}$")
+    code: str = Field(pattern=r"^[A-Za-z2-9]{4}$")
     password: str = Field(min_length=8, max_length=200)
-
-
-@router.post("/auth/password-reset/request")
-def request_password_reset(data: ResetRequest, s: Session = Depends(db)):
-    if not all(os.getenv(key) for key in ("SMTP_HOST", "SMTP_FROM", "PUBLIC_APP_URL")):
-        raise HTTPException(503, "Отправка писем для сброса пароля пока недоступна")
-    user = s.scalar(select(User).where(User.email == data.email.lower()).with_for_update())
-    if user is None:
-        return {"ok": True}
-    reset = s.get(PasswordReset, user.id)
-    if reset and reset.expires_at > now():
-        return {"ok": True}
-    token = secrets.token_urlsafe(32)
-    s.merge(PasswordReset(
-        user_id=user.id, token_hash=token_hash(token), expires_at=now() + timedelta(minutes=30),
-    ))
-    try:
-        send_reset_link(user.email, token)
-    except (smtplib.SMTPException, OSError, ValueError, KeyError):
-        s.rollback()
-    return {"ok": True}
 
 
 @router.post("/auth/password-reset/confirm")
 def confirm_password_reset(data: ResetConfirm, response: Response, s: Session = Depends(db)):
-    digest = token_hash(data.token)
-    user = s.scalar(
-        select(User).join(PasswordReset).where(PasswordReset.token_hash == digest)
-        .with_for_update(of=User)
-    )
-    if user is None:
-        raise HTTPException(400, "Ссылка недействительна или истекла")
-    consumed = s.scalar(
-        delete(PasswordReset).where(
-            PasswordReset.user_id == user.id,
-            PasswordReset.token_hash == digest,
-            PasswordReset.expires_at > now(),
-        ).returning(PasswordReset.user_id)
-    )
-    if consumed is None:
-        raise HTTPException(400, "Ссылка недействительна или истекла")
+    user = s.scalar(select(User).where(User.account_id == data.account_id).with_for_update())
+    invalid = HTTPException(400, "Код недействителен. Проверьте ID и код или попросите администратора выдать новый.")
+    if user is None or role(s, user) == "admin":
+        raise invalid
 
+    reset = s.get(PasswordReset, user.id)
+    if reset is None or reset.expires_at <= now():
+        raise invalid
+
+    if not verify_password(data.code.upper(), reset.code_hash):
+        reset.failed_attempts += 1
+        if reset.failed_attempts >= MAX_RESET_ATTEMPTS:
+            s.delete(reset)
+        s.commit()
+        raise invalid
+
+    s.delete(reset)
     s.merge(Credential(user_id=user.id, password_hash=hash_password(data.password)))
     s.execute(delete(LoginSession).where(LoginSession.user_id == user.id))
     s.execute(delete(LoginAttempt).where(LoginAttempt.email == user.email))
@@ -835,6 +811,32 @@ def admin_students(q: str = "", user=Depends(staff), s: Session = Depends(db)):
     return [user_dict(s, u) for u in s.scalars(query.order_by(User.id.desc()))]
 
 
+@router.post("/admin/users/{user_id}/password-reset-code")
+def issue_password_reset_code(
+    user_id: int, response: Response, user=Depends(staff), s: Session = Depends(db)
+):
+    if role(s, user) != "admin":
+        raise HTTPException(403, "Только администратор")
+    target = s.get(User, user_id, with_for_update=True)
+    if target is None:
+        raise HTTPException(404, "Пользователь не найден")
+    if role(s, target) == "admin":
+        raise HTTPException(403, "Коды выдаются студентам и преподавателям")
+
+    previous = s.get(PasswordReset, target.id)
+    code = "".join(secrets.choice(RESET_CODE_ALPHABET) for _ in range(4))
+    while previous and verify_password(code, previous.code_hash):
+        code = "".join(secrets.choice(RESET_CODE_ALPHABET) for _ in range(4))
+
+    code_hash = hash_password(code)
+    expires_at = now() + timedelta(minutes=15)
+    s.merge(PasswordReset(
+        user_id=target.id, code_hash=code_hash, expires_at=expires_at, failed_attempts=0,
+    ))
+    response.headers["Cache-Control"] = "no-store"
+    return {"code": code, "expires_at": expires_at}
+
+
 class RoleInput(Strict):
     role: Literal["student", "teacher", "admin"]
 
@@ -847,10 +849,13 @@ def set_role(
         raise HTTPException(403, "Только администратор")
     if user_id == user.id:
         raise HTTPException(403, "Нельзя менять собственную роль")
-    target = s.get(User, user_id)
+    target = s.get(User, user_id, with_for_update=True)
     if not target:
         raise HTTPException(404, "Пользователь не найден")
-    target.role_id = s.scalar(select(Role.id).where(Role.name == data.role))
+    new_role_id = s.scalar(select(Role.id).where(Role.name == data.role))
+    if target.role_id != new_role_id:
+        s.execute(delete(PasswordReset).where(PasswordReset.user_id == target.id))
+        target.role_id = new_role_id
     s.flush()
     return user_dict(s, target)
 
