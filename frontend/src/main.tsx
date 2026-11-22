@@ -204,6 +204,7 @@ function App() {
                   <Route path="/" element={user ? <Catalog /> : <Navigate to="/register" replace />} />
                   <Route path="/courses" element={<Catalog />} />
                   <Route path="/login" element={<Login onLogin={setUser} />} />
+                  <Route path="/reset-password" element={<ResetPassword onReset={() => setUser(null)} />} />
                   <Route path="/admin/login" element={<Login admin onLogin={setUser} />} />
                   <Route
                     path="/register"
@@ -375,6 +376,7 @@ function Login({
           {busy ? "Отправляем…" : register ? "Создать аккаунт" : "Войти"}
         </button>
         {error && <p role="alert">{error}</p>}
+        <Link to="/reset-password">Reset Passwords</Link>
         <Link to={register ? "/login" : "/register"}>
           {register ? "Уже есть аккаунт? Войти" : "Создать аккаунт"} →
         </Link>
@@ -383,6 +385,73 @@ function Login({
     </>
   );
 }
+function ResetPassword({ onReset }: { onReset: () => void }) {
+  const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get("token"));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+
+  return (
+    <>
+      <Heading title="Сброс пароля" />
+      <form className="panel auth" onSubmit={async (event) => {
+        event.preventDefault();
+        setError("");
+        const fields = new FormData(event.currentTarget);
+        const password = fields.get("password");
+        if (token && password !== fields.get("confirm")) {
+          setError("Пароли не совпадают");
+          return;
+        }
+        setBusy(true);
+        try {
+          if (token) {
+            await api("/auth/password-reset/confirm", "POST", { token, password });
+            window.history.replaceState(window.history.state, "", window.location.pathname);
+            onReset();
+          } else {
+            await api("/auth/password-reset/request", "POST", { email: fields.get("email") });
+          }
+          setDone(true);
+        } catch (err) {
+          setError((err as Error).message);
+        } finally {
+          setBusy(false);
+        }
+      }}>
+        {done ? (
+          <p role="status">{token ? "Пароль обновлён. Войдите с новым паролем." : "Если аккаунт существует, вы получите ссылку для сброса."}</p>
+        ) : (
+          <>
+            {token ? (
+              <>
+                <label>
+                  Новый пароль
+                  <input name="password" type="password" autoComplete="new-password" minLength={8} maxLength={200} required />
+                </label>
+                <label>
+                  Повторите пароль
+                  <input name="confirm" type="password" autoComplete="new-password" minLength={8} maxLength={200} required />
+                </label>
+              </>
+            ) : (
+              <label>
+                Email аккаунта
+                <input name="email" type="email" autoComplete="username" maxLength={254} required />
+              </label>
+            )}
+            <button className="button" disabled={busy}>
+              {busy ? "Отправляем…" : token ? "Сохранить пароль" : "Отправить ссылку"}
+            </button>
+          </>
+        )}
+        {error && <p role="alert">{error}</p>}
+        <Link to="/login">К форме входа</Link>
+      </form>
+    </>
+  );
+}
+
 function Catalog() {
   const { data, error } = useLoad("/courses");
   const [q, setQ] = useState("");
@@ -749,7 +818,7 @@ function Profile({ onChange }: { onChange: (u: Row) => void }) {
   const [message, setMessage] = useState("");
   return (
     <>
-      <Heading title="Мой профиль" text={`${user.email} · ${user.role}`} />
+      <Heading title="Мой профиль" text={`ID ${user.account_id} · ${user.email} · ${user.role}`} />
       <form
         className="panel editor"
         onSubmit={async (e) => {
@@ -1422,37 +1491,49 @@ function LessonEditor({
 }
 function Admin() {
   const { data, error, reload } = useLoad("/admin/users");
-  const me = useContext(UserContext);
+  const [role, setRole] = useState<"student" | "teacher">("student");
   const [saveError, setSaveError] = useState("");
+  const accounts = data?.filter((user: Row) => user.role === role);
+
   return (
     <>
-      <Heading
-        title="Пользователи"
-        text="Учётные записи и роли. Свою роль изменить нельзя."
-      />
+      <Heading title="Пользователи" />
+      <div className="account-tabs" role="group" aria-label="Тип аккаунта">
+        <button type="button" aria-pressed={role === "student"} onClick={() => setRole("student")}>Студенты</button>
+        <button type="button" aria-pressed={role === "teacher"} onClick={() => setRole("teacher")}>Преподаватели</button>
+      </div>
       <State data={data} error={error} />
       {saveError && <p role="alert">{saveError}</p>}
-      {data?.map((u: Row) => (
-        <div className="lesson-row" key={u.id}>
-          <strong>{u.display_name}</strong>
-          <span>{u.email}</span>
-          <select
-            aria-label={`Роль ${u.email}`}
-            value={u.role}
-            disabled={u.id === me?.id}
-            onChange={(e) => {
-              setSaveError("");
-              api(`/admin/users/${u.id}/role`, "PUT", { role: e.target.value })
-                .then(reload)
-                .catch((err) => setSaveError(err.message));
-            }}
-          >
-            <option value="student">student</option>
-            <option value="teacher">teacher</option>
-            <option value="admin">admin</option>
-          </select>
+      {accounts?.length === 0 && <p>В этом разделе пока нет аккаунтов.</p>}
+      {!!accounts?.length && (
+        <div className="panel account-table">
+          <table aria-label={role === "student" ? "Студенты" : "Преподаватели"}>
+            <thead><tr><th>ID</th><th>Имя</th><th>Email</th><th>Пароль</th><th>Роль</th></tr></thead>
+            <tbody>
+              {accounts.map((u: Row) => (
+                <tr key={u.id}>
+                  <td>{u.account_id}</td>
+                  <td>{u.display_name}</td>
+                  <td>{u.email}</td>
+                  <td>{u.has_password ? "Установлен" : "Не установлен"}</td>
+                  <td>
+                    <select aria-label={`Роль ${u.email}`} value={u.role} onChange={(event) => {
+                      setSaveError("");
+                      api(`/admin/users/${u.id}/role`, "PUT", { role: event.target.value })
+                        .then(reload)
+                        .catch((err) => setSaveError(err.message));
+                    }}>
+                      <option value="student">Студент</option>
+                      <option value="teacher">Преподаватель</option>
+                      <option value="admin">Администратор</option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      ))}
+      )}
     </>
   );
 }

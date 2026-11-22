@@ -3,6 +3,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    FetchedValue,
     String,
     UniqueConstraint,
     func,
@@ -29,12 +30,14 @@ class User(Base):
     __tablename__ = "users"
     __table_args__ = (
         UniqueConstraint("email", name="uq_users_email"),
+        UniqueConstraint("account_id", name="uq_users_account_id"),
         CheckConstraint(
             "email = lower(email) AND position('@' in email) > 1", name="ck_users_email"
         ),
         CheckConstraint("length(trim(display_name)) > 0", name="ck_users_display_name"),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[str] = mapped_column(String(12), server_default=FetchedValue())
     email: Mapped[str] = mapped_column(String(254))
     display_name: Mapped[str] = mapped_column(String(100))
     role_id: Mapped[int] = mapped_column(
@@ -123,6 +126,15 @@ class Credential(Base):
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
     password_hash: Mapped[str] = mapped_column(String(300))
+
+
+class PasswordReset(Base):
+    __tablename__ = "password_resets"
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class LoginSession(Base):

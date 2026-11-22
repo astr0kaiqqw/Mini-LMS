@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 import os
+import smtplib
 import secrets
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
@@ -16,6 +17,7 @@ from .models import (
     Credential,
     LoginSession,
     LoginAttempt,
+    PasswordReset,
     Course,
     Module,
     Lesson,
@@ -26,6 +28,7 @@ from .models import (
     QuizQuestion,
     QuizAttempt,
 )
+from .reset_mail import send_reset_link
 from .security import hash_password, verify_password, token_hash
 
 router = APIRouter(prefix="/api")
@@ -104,6 +107,7 @@ def user_dict(s, u):
     profile = s.get(UserProfile, u.id)
     return dict(
         id=u.id,
+        account_id=u.account_id,
         email=u.email,
         display_name=u.display_name,
         role=role(s, u),
@@ -124,7 +128,9 @@ class Login(Strict):
 
 @router.post("/auth/login")
 def login(data: Login, response: Response, s: Session = Depends(db)):
-    user = s.scalar(select(User).where(User.email == data.email.strip().lower()))
+    user = s.scalar(
+        select(User).where(User.email == data.email.strip().lower()).with_for_update()
+    )
     credential = s.get(Credential, user.id) if user else None
     # Perform a password derivation even when the account has no credential.
     valid = (
@@ -191,6 +197,62 @@ def register(data: Register, response: Response, s: Session = Depends(db)):
     s.add(Credential(user_id=user.id, password_hash=hash_password(data.password)))
     s.add(UserProfile(user_id=user.id))
     return start_session(s, response, user)
+
+
+class ResetRequest(Strict):
+    email: str = Field(max_length=254, pattern=r"^[^@\s]+@[^@\s]+$")
+
+
+class ResetConfirm(BaseModel):
+    token: str = Field(pattern=r"^[A-Za-z0-9_-]{43}$")
+    password: str = Field(min_length=8, max_length=200)
+
+
+@router.post("/auth/password-reset/request")
+def request_password_reset(data: ResetRequest, s: Session = Depends(db)):
+    if not all(os.getenv(key) for key in ("SMTP_HOST", "SMTP_FROM", "PUBLIC_APP_URL")):
+        raise HTTPException(503, "Отправка писем для сброса пароля пока недоступна")
+    user = s.scalar(select(User).where(User.email == data.email.lower()).with_for_update())
+    if user is None:
+        return {"ok": True}
+    reset = s.get(PasswordReset, user.id)
+    if reset and reset.expires_at > now():
+        return {"ok": True}
+    token = secrets.token_urlsafe(32)
+    s.merge(PasswordReset(
+        user_id=user.id, token_hash=token_hash(token), expires_at=now() + timedelta(minutes=30),
+    ))
+    try:
+        send_reset_link(user.email, token)
+    except (smtplib.SMTPException, OSError, ValueError, KeyError):
+        s.rollback()
+    return {"ok": True}
+
+
+@router.post("/auth/password-reset/confirm")
+def confirm_password_reset(data: ResetConfirm, response: Response, s: Session = Depends(db)):
+    digest = token_hash(data.token)
+    user = s.scalar(
+        select(User).join(PasswordReset).where(PasswordReset.token_hash == digest)
+        .with_for_update(of=User)
+    )
+    if user is None:
+        raise HTTPException(400, "Ссылка недействительна или истекла")
+    consumed = s.scalar(
+        delete(PasswordReset).where(
+            PasswordReset.user_id == user.id,
+            PasswordReset.token_hash == digest,
+            PasswordReset.expires_at > now(),
+        ).returning(PasswordReset.user_id)
+    )
+    if consumed is None:
+        raise HTTPException(400, "Ссылка недействительна или истекла")
+
+    s.merge(Credential(user_id=user.id, password_hash=hash_password(data.password)))
+    s.execute(delete(LoginSession).where(LoginSession.user_id == user.id))
+    s.execute(delete(LoginAttempt).where(LoginAttempt.email == user.email))
+    response.delete_cookie("lms_session")
+    return {"ok": True}
 
 
 @router.post("/auth/logout")
@@ -751,7 +813,11 @@ def delete_lesson(lesson_id: int, user=Depends(staff), s: Session = Depends(db))
 def admin_users(user=Depends(staff), s: Session = Depends(db)):
     if role(s, user) != "admin":
         raise HTTPException(403, "Только администратор")
-    return [user_dict(s, u) for u in s.scalars(select(User).order_by(User.id))]
+    rows = s.execute(
+        select(User, Credential.user_id.is_not(None))
+        .outerjoin(Credential).order_by(User.id)
+    )
+    return [dict(user_dict(s, u), has_password=has_password) for u, has_password in rows]
 
 
 @router.get("/admin/students")
@@ -764,6 +830,7 @@ def admin_students(q: str = "", user=Depends(staff), s: Session = Depends(db)):
         query = query.where(
             User.display_name.icontains(search, autoescape=True)
             | User.email.icontains(search, autoescape=True)
+            | User.account_id.contains(search, autoescape=True)
         )
     return [user_dict(s, u) for u in s.scalars(query.order_by(User.id.desc()))]
 

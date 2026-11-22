@@ -127,3 +127,32 @@ button:disabled {
 .quiz-table th { background: #eef2ff; }
 .quiz-table td:first-child { width: 25%; }
 .quiz-table td:last-child { width: 30%; }
+
+.account-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+
+.account-tabs [aria-pressed="true"] {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: .25em;
+}
+
+.account-table {
+  overflow-x: auto;
+}
+
+.account-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.account-table th,
+.account-table td {
+  padding: .65rem;
+  text-align: left;
+  border-bottom: 1px solid currentColor;
+}
