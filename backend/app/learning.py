@@ -286,6 +286,36 @@ def profile(data: ProfileInput, user=Depends(current), s: Session = Depends(db))
     return user_dict(s, user)
 
 
+class PasswordChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")  # no whitespace stripping for passwords
+    current_password: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=1, max_length=200)
+
+
+@router.post("/me/password")
+def change_password(
+    data: PasswordChange,
+    request: Request,
+    user=Depends(current),
+    s: Session = Depends(db),
+):
+    credential = s.get(Credential, user.id)
+    if not credential or not verify_password(
+        data.current_password, credential.password_hash
+    ):
+        raise HTTPException(403, "Текущий пароль указан неверно")
+    check_password(data.new_password, user.email)
+    credential.password_hash = hash_password(data.new_password)
+    # Decision D3: sign out every other device, keep the current session.
+    keep = token_hash(request.cookies.get("lms_session", ""))
+    s.execute(
+        delete(LoginSession).where(
+            LoginSession.user_id == user.id, LoginSession.token_hash != keep
+        )
+    )
+    return {"ok": True}
+
+
 def lessons_for(s, course_id):
     return s.scalars(
         select(Lesson)

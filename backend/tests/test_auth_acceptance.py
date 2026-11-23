@@ -230,7 +230,6 @@ def test_au21_trivial_password_rejected(env):
     assert r.status_code == 422
 
 
-@pytest.mark.xfail(strict=True, reason="AUTH-GAP-3: no way to change password")
 def test_au22_user_can_change_password(env):
     client, _ = raw_login(STUDENT)
     r = client.post("/api/me/password", json={"current_password": PW, "new_password": "NewPass2026!"})
