@@ -123,3 +123,48 @@
 | 8 | Ссылки и const | [c++ ссылки что это. c++ ссылки и указатели разница. Указатель на сс…](https://www.youtube.com/watch?v=hZOX-LlUETE) | #SimpleCode | 19:52 |
 | 9 | Структуры | [Структуры в C++ · struct C++. Разница между структурой и классом. И…](https://www.youtube.com/watch?v=EWJqZN7ifI0) | #SimpleCode | 10:23 |
 | 10 | Файлы и мини-проект | [Чтение и запись в файл с++ используя класс fstream c++. Изучение С+…](https://www.youtube.com/watch?v=bTysglLJ8No) | #SimpleCode | 16:21 |
+
+### Philosophy (`philosophy`), 101 мин
+
+| № | Урок | Видео | Автор | Длит. |
+|---|---|---|---|---|
+| 1 | Философский вопрос | [Что такое философия](https://www.youtube.com/watch?v=KshafAmECAo) | SciOne | 12:28 |
+| 2 | Аргумент и вывод | [Что такое аргумент? Логика (1)](https://www.youtube.com/watch?v=wsLZDC5WmwU) | Скептический философ | 8:21 |
+| 3 | Логические ошибки | [Все логические ошибки за 9 минут](https://www.youtube.com/watch?v=craWARgRa0g) | Лобстер Sapiens | 9:00 |
+| 4 | Знание и убеждение | [Проблема Гетье](https://www.youtube.com/watch?v=09gdiwUV7sU) | ПоТОК сознания | 4:56 |
+| 5 | Скептицизм и сомнение | [Философия Декарт](https://www.youtube.com/watch?v=HeTn8E6G73o) | Гуманитарщина | 10:36 |
+| 6 | Личность и идентичность | [Тебя уже давно НЕТ · Тождество личности](https://www.youtube.com/watch?v=aLOnKTTRrs4) | Капитан Дрейк | 13:54 |
+| 7 | Свобода и ответственность | [Свобода воли и детерминизм. Просто и доступно. Лекции по философии…](https://www.youtube.com/watch?v=KZqwxtSq124) | Скептический философ | 14:10 |
+| 8 | Этические подходы | [Этические теории – «этика добродетели», утилитаризм и деонтология](https://www.youtube.com/watch?v=XfQYJOuGgpo) | Иван Куницын · Про нейросети и не только | 14:10 |
+| 9 | Справедливость и общество | [Джон Ролз - теория справедливости (За 10 минут)](https://www.youtube.com/watch?v=ug1PZi42MgQ) | Философия за 10 минут | 9:04 |
+| 10 | Философское эссе | [Как правильно писать эссе · Полезные советы · Пример эссе · Эссе он…](https://www.youtube.com/watch?v=wA5K2_8IZfA) | Адукар | 4:45 |
+
+### Cybersecurity (`cybersecurity`), 100 мин
+
+| № | Урок | Видео | Автор | Длит. |
+|---|---|---|---|---|
+| 1 | Активы и модель угроз | [МОДЕЛЬ УГРОЗ · Простым языком на примере](https://www.youtube.com/watch?v=gsUOxAHoxbY) | Цифровая Благодетель | 4:10 |
+| 2 | Пароли и MFA | [Знай! / Менеджер паролей и двухфакторная аутентификация](https://www.youtube.com/watch?v=4yCVx8aQ3nM) | РосКомСвобода | 3:46 |
+| 3 | Фишинг | [Фишинг: как мошенники крадут деньги и данные](https://www.youtube.com/watch?v=6VZL0DJWr7g) | Первый отдел | 13:04 |
+| 4 | Обновления и минимальные права | [Как устроена кибербезопасность: VPN, NAT, фаервол и принцип минимал…](https://www.youtube.com/watch?v=g8io45pkhXQ) | Обучение системных администраторов | 13:16 |
+| 5 | Сети и TLS | [Как работает шифрование в HTTPS (SSL и TLS)](https://www.youtube.com/watch?v=nsyLWDtWXk0) | QA Studio · Тестирование | 18:37 |
+| 6 | Шифрование и хеширование | [Пароли, шифрование, хеширование и СОЛЬ](https://www.youtube.com/watch?v=VbB99SOR8OE) | hasio | 6:00 |
+| 7 | Контроль доступа | [Идентификация, аутентификация и авторизация простыми словами](https://www.youtube.com/watch?v=Jc1cqLk7NmQ) | MakeIT | 4:37 |
+| 8 | Безопасный ввод | [SQL-инъекции для начинающих: от теории к практике](https://www.youtube.com/watch?v=pDvSNaQfuIc) | CyberYozh | 15:33 |
+| 9 | Резервные копии и инциденты | [Как не потерять данные: резервное копирование и правило 3-2-1 прост…](https://www.youtube.com/watch?v=GqCoVdm6odE) | Обучение системных администраторов | 13:59 |
+| 10 | Мини-аудит учебного приложения | [Весь OWASP Top 10 простыми словами](https://www.youtube.com/watch?v=4Ufdf3t3o3Y) | Reconholic | 7:20 |
+
+### Machine Learning for Beginners (`machine-learning-beginners`), 117 мин
+
+| № | Урок | Видео | Автор | Длит. |
+|---|---|---|---|---|
+| 1 | Задачи машинного обучения | [ОБУЧЕНИЕ С УЧИТЕЛЕМ, ОБУЧЕНИЕ БЕЗ УЧИТЕЛЯ, ОБУЧЕНИЕ С ПОДКРЕПЛЕНИЕМ…](https://www.youtube.com/watch?v=ku2oPMPht2I) | machine learrrning | 11:37 |
+| 2 | Табличные данные | [Анализ данных с помощью Pandas. Вводное занятие](https://www.youtube.com/watch?v=wjDns1IYcPg) | egoroff_channel | 3:36 |
+| 3 | Разделение данных | [Python Data Science / Урок #3 – Основы машинного обучения (Scikit-l…](https://www.youtube.com/watch?v=5UdOdUgDr-c) | Школа itProger / Программирование | 11:26 |
+| 4 | Подготовка признаков | [StandardScaler· MinMaxScaler · МАСШТАБИРОВАНИЕ ДАННЫХ · МАШИННОЕ ОБ…](https://www.youtube.com/watch?v=XsuCOfpf8Ic) | machine learrrning | 21:37 |
+| 5 | Линейная регрессия | [Что такое линейная регрессия? Душкин объяснит](https://www.youtube.com/watch?v=rE43fnoQNPw) | Душкин объяснит | 7:41 |
+| 6 | Классификация | [Логистическая Регрессия · Logistic Regression · Линейная модель для…](https://www.youtube.com/watch?v=9BoVCdedvW8) | machine learrrning | 19:57 |
+| 7 | Метрики | [#23. Показатели precision и recall. F-мера · Машинное обучение](https://www.youtube.com/watch?v=-jplpYLrcdM) | selfedu | 14:10 |
+| 8 | Переобучение | [ПЕРЕОБУЧЕНИЕ И НЕДООБУЧЕНИЕ В МАШИННОМ ОБУЧЕНИИ · overfitting, unde…](https://www.youtube.com/watch?v=m7P7bnLxIc4) | machine learrrning | 12:26 |
+| 9 | Кросс-валидация и baseline | [Machine Learning. Урок №2. Кросс - валидация/Сross-validation](https://www.youtube.com/watch?v=Sjof9d8R96E) | hyperlee | 9:11 |
+| 10 | Мини-проект и ограничения | [Python Data Science / Урок #1 – Полная обработка данных (Scikit-lea…](https://www.youtube.com/watch?v=mqp7dWk40HI) | Школа itProger / Программирование | 6:11 |
