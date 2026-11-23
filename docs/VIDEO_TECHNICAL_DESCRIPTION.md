@@ -88,3 +88,12 @@ ALTER TABLE lessons VALIDATE CONSTRAINT ck_lessons_youtube_url;
 
 Перед миграцией проверить, что неподходящих строк нет: `SELECT id, video_url FROM lessons WHERE video_url LIKE '%youtu%'`. Если есть, то сначала привести их к форме Y2.
 
+## 6. API
+
+| Метод | Путь | Что меняется |
+|---|---|---|
+| GET | `/api/lessons/{id}` | + `video_provider`, `youtube_id` (Y5) |
+| POST, PUT | `/api/staff/modules/{id}/lessons`, `/api/staff/lessons/{id}` | Ссылка YouTube приводится к форме Y2 или 422 (Y2, Y3) |
+| POST | `/api/lessons/{id}/watch` | Без изменений |
+| POST | `/api/lessons/{id}/complete` | Без изменений: для урока с видео 422 |
+
