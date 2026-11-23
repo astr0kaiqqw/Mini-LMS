@@ -168,3 +168,63 @@
 | 8 | Переобучение | [ПЕРЕОБУЧЕНИЕ И НЕДООБУЧЕНИЕ В МАШИННОМ ОБУЧЕНИИ · overfitting, unde…](https://www.youtube.com/watch?v=m7P7bnLxIc4) | machine learrrning | 12:26 |
 | 9 | Кросс-валидация и baseline | [Machine Learning. Урок №2. Кросс - валидация/Сross-validation](https://www.youtube.com/watch?v=Sjof9d8R96E) | hyperlee | 9:11 |
 | 10 | Мини-проект и ограничения | [Python Data Science / Урок #1 – Полная обработка данных (Scikit-lea…](https://www.youtube.com/watch?v=mqp7dWk40HI) | Школа itProger / Программирование | 6:11 |
+
+### Chinese for Beginners (`chinese-beginners`), 92 мин
+
+| № | Урок | Видео | Автор | Длит. |
+|---|---|---|---|---|
+| 1 | Пиньинь и тоны | [КИТАЙСКИЙ ЯЗЫК · Урок 1 · Тоны, произношение и пиньинь](https://www.youtube.com/watch?v=9k46ogTPTwU) | ChineseZen | 11:59 |
+| 2 | Приветствие | [КИТАЙСКИЙ ЯЗЫК ·  Урок 3 · Приветствие, прощание, благодарность](https://www.youtube.com/watch?v=QEoeANKpuq4) | ChineseZen | 7:21 |
+| 3 | Местоимения и 是 | [Китайский язык для начинающих. Урок 1. Местоимения китайского языка…](https://www.youtube.com/watch?v=0jegi8h6294) | SmarTest | 9:59 |
+| 4 | Вопросительная частица 吗 | [Урок 46. Вопросительная частица 吗 ma в китайском языке](https://www.youtube.com/watch?v=pGQNuL4zS0c) | panda chin | 4:07 |
+| 5 | Числа от нуля до ста | [Числа от 1 до 100 на китайском. Chinese numbers 1-100. 数字一到一百](https://www.youtube.com/watch?v=_o0_3927Idw) | Loong Chinese | 8:56 |
+| 6 | Семья и 的 | [Разговор о семье и членах семьи · 你家有几口人？· Базовый китайский язык д…](https://www.youtube.com/watch?v=aXPT78-7bVM) | WAWA CHINESE 哇哇汉语 | 7:37 |
+| 7 | Даты и время | [Китайский язык для начинающих. Урок 4. Часы, минуты, секунды. Время…](https://www.youtube.com/watch?v=1bMnybW3vQE) | SmarTest | 10:42 |
+| 8 | Счётные слова | [Счетные слова в китайском.  Топ 15. Китайский урок  · Школа китайск…](https://www.youtube.com/watch?v=-hV81AlPVBE) | Twins Chinese | 12:32 |
+| 9 | Есть и находиться | [Местонахождение и глагол 在 (zài) - Изучаем грамматику китайского яз…](https://www.youtube.com/watch?v=6G64sIoB_4I) | Александра Саранчина · Школа китайского языка | 11:28 |
+| 10 | Короткое представление | [Красивый и интересный РАССКАЗ О СЕБЕ НА КИТАЙСКОМ (план из 7 пункто…](https://www.youtube.com/watch?v=lFil1r-hNyQ) | Nuli Chinese | 8:10 |
+
+### Databases (`databases`), 109 мин
+
+| № | Урок | Видео | Автор | Длит. |
+|---|---|---|---|---|
+| 1 | Сущности и атрибуты | [Что такое ERD за 9 минут](https://www.youtube.com/watch?v=tNQlFW3BRUc) | Listen IT | 9:16 |
+| 2 | Ключи | [Начальный курс SQL.Первичный ключ и внешний ключ  Типы связей между…](https://www.youtube.com/watch?v=cZTxadhqahQ) | Igor Vovchenko | 10:06 |
+| 3 | SELECT и фильтрация | [Оператор SELECT · Основы SQL](https://www.youtube.com/watch?v=0Jw3pnF0huk) | Andrey Sozykin | 7:00 |
+| 4 | Создание и изменение строк | [Вставка и изменение данных в SQL · Основы SQL](https://www.youtube.com/watch?v=eyWGkfBYmIY) | Andrey Sozykin | 9:56 |
+| 5 | JOIN | [Все JOIN в SQL Для Начинающих За 15 Минут](https://www.youtube.com/watch?v=H3LYwkePWfM) | Vlad Mishustin | 15:48 |
+| 6 | Агрегации | [Группировка в SQL · Основы SQL](https://www.youtube.com/watch?v=L53jIs9KVG4) | Andrey Sozykin | 7:15 |
+| 7 | Нормализация | [Нормальные формы базы данных. Три нормальных формы, нормализация и…](https://www.youtube.com/watch?v=0kq99Y8m0gw) | Диджитализируй! | 14:51 |
+| 8 | Транзакции | [Что такое ACID за 9 минут](https://www.youtube.com/watch?v=vFmajCQ7Wuc) | Listen IT | 9:46 |
+| 9 | Индексы и EXPLAIN | [Что такое SQL ИНДЕКСЫ за 10 минут: Объяснение с примерами](https://www.youtube.com/watch?v=LpEwssOYRKA) | Listen IT | 10:40 |
+| 10 | Миграции и резервирование | [Alembic - Как делать Миграции Базы Данных на Python #13](https://www.youtube.com/watch?v=SD6_EPg0Aqk) | Артём Шумейко | 14:58 |
+
+### Мастерская веба (`web-lab`), 106 мин
+
+| № | Урок | Видео | Автор | Длит. |
+|---|---|---|---|---|
+| 1 | Как работает веб | [КАК РАБОТАЕТ HTTP? – АНАТОМИЯ ИНТЕРНЕТА](https://www.youtube.com/watch?v=93cov6yT4OY) | Droider | 16:06 |
+| 2 | HTML: структура страницы | [Что такое HTML за 7 минут](https://www.youtube.com/watch?v=MBe1h80ghKA) | Listen IT | 7:33 |
+| 3 | Формы и доступность | [11. HTML формы. Теги form, fieldset, legend, label и поле ввода input](https://www.youtube.com/watch?v=_in4LAdxAUA) | Александр Ламков — Friendly Frontend | 4:39 |
+| 4 | CSS и блочная модель | [3. Блочная модель в CSS — свойства display, width, height, padding,…](https://www.youtube.com/watch?v=oQDNPNZ72Ig) | Александр Ламков — Friendly Frontend | 9:16 |
+| 5 | Flexbox и Grid | [12. CSS Flexbox Layout. Флексы в CSS. Гайд по флексбокс](https://www.youtube.com/watch?v=YG8Vhz1pAsU) | Александр Ламков — Friendly Frontend | 16:34 |
+| 6 | JavaScript и события | [Уроки Javascript #1. Обработчик событий - AddEventListener.](https://www.youtube.com/watch?v=H9XRtCjD3hA) | Василий Муравьев | 9:11 |
+| 7 | Асинхронные запросы | [Урок 8. JavaScript. Как работает Async, Await. Работа с сервером c…](https://www.youtube.com/watch?v=SHiUyM_fFME) | Владилен Минин | 14:12 |
+| 8 | React и компоненты | [Все что нужно знать о REACT для НОВИЧКА за 15 минут · Изучаем Реакт](https://www.youtube.com/watch?v=GeulXZP_kZ8) | Frontend Fundamentals · Александр Караджиков | 15:11 |
+| 9 | Маршруты и доступ | [React Router 6 - базовый роутинг React-приложения](https://www.youtube.com/watch?v=0auS9DNTmzE) | Михаил Непомнящий | 8:05 |
+| 10 | Мини-проект: каталог | [Поисковой фильтр в реакт проекте? 🔍 · Как сделать живой поиск на Ja…](https://www.youtube.com/watch?v=IW_7b0nJoSE) | Rutina dev | 5:22 |
+
+### Работа в команде (`team-practice`), 107 мин
+
+| № | Урок | Видео | Автор | Длит. |
+|---|---|---|---|---|
+| 1 | Общая цель и результат | [Как ПРАВИЛЬНО ПОСТАВИТЬ ЦЕЛИ: простой гайд](https://www.youtube.com/watch?v=ROKGXp3zCEo) | амоБлог  | 8:45 |
+| 2 | Роли и ответственность | [Как войти в IT? Роли в команде и что они делают](https://www.youtube.com/watch?v=bKZvl3VOQ2c) | Скрамбери | 14:32 |
+| 3 | Декомпозиция | [ДЕКОМПОЗИЦИЯ. Как решать большие задачи эффективно.](https://www.youtube.com/watch?v=Ag-o4g_6HIU) | Павел Александрович | 8:24 |
+| 4 | Задачи и критерии приёмки | [User Story: принципы, критерии приемки, декомпозиция](https://www.youtube.com/watch?v=ExA_CoxcoRo) | Y_LAB University | 5:37 |
+| 5 | Git и ветки | [Лучший Гайд по Git Для Начинающих За 15 Минут](https://www.youtube.com/watch?v=XuFaQSW79rM) | Vlad Mishustin | 14:07 |
+| 6 | Обзор изменений | [Что такое код-ревью?](https://www.youtube.com/watch?v=7__ZzWA-71U) | Merion Academy | 8:56 |
+| 7 | Контракты API | [REST API простыми словами. Что такое REST API? · 2022](https://www.youtube.com/watch?v=EaFr0wYaxxM) | Свят404 | 7:10 |
+| 8 | Ошибки и воспроизведение | [Составление баг репортов](https://www.youtube.com/watch?v=8UkU-T38Z6g) | Лёша Маршал | 15:08 |
+| 9 | Интеграция и демонстрация | [CI/CD — Простым языком на понятном примере](https://www.youtube.com/watch?v=pFKwmEdwZZQ) | Артём Шумейко | 15:29 |
+| 10 | Ретроспектива | [Как провести ретроспективу – Инструкция за 10 минут (Agile Retrospe…](https://www.youtube.com/watch?v=OYUw-jZAd2E) | Dmitry Blinov | 9:48 |
