@@ -134,3 +134,35 @@ def test_vd22_database_rejects_non_canonical_youtube_link(env):
         with s.begin_nested():
             l.video_url, l.video_duration = "https://youtu.be/FENzriAjRP4", 363
             s.flush()
+
+
+@needs_db
+@pytest.mark.xfail(strict=True, reason="VID-GAP-4: seed does not attach catalog videos to lessons")
+def test_vd23_seed_attaches_catalog_video_to_every_seed_lesson(env):
+    import lesson_videos
+    s, _ = env
+    lesson_videos.apply(s)
+    for slug in COURSES:
+        for position, data in enumerate(lessons_for(slug), 1):
+            l = lesson_of(s, slug, position)
+            v = VIDEOS[slug][data["title"]]
+            assert (l.video_url, l.video_duration) == (watch_url(v.youtube_id), v.seconds), (slug, l.title)
+
+
+@needs_db
+@pytest.mark.xfail(strict=True, reason="VID-GAP-4: seed does not attach catalog videos to lessons")
+def test_vd24_seed_keeps_teacher_video_and_is_repeatable(env):
+    import lesson_videos
+    from app.models import LessonProgress
+    s, _ = env
+    own = lesson_of(s, "english", 1)
+    own.video_url, own.video_duration = "https://media.example.test/hello.mp4", 120
+    s.flush()
+    demo_before = s.scalars(select(LessonProgress).where(LessonProgress.demo.is_(True))).all()
+    lesson_videos.apply(s)
+    first = {l.id: (l.video_url, l.video_duration) for l in (lesson_of(s, slug, p) for slug in COURSES for p in range(1, 11))}
+    lesson_videos.apply(s)
+    second = {l.id: (l.video_url, l.video_duration) for l in (lesson_of(s, slug, p) for slug in COURSES for p in range(1, 11))}
+    assert first == second
+    assert first[own.id] == ("https://media.example.test/hello.mp4", 120)
+    assert len(s.scalars(select(LessonProgress).where(LessonProgress.demo.is_(True))).all()) == len(demo_before)
