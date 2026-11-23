@@ -108,3 +108,29 @@ def test_vd20_youtube_link_is_normalized_and_typed(env):
     assert (got["video_provider"], got["youtube_id"]) == ("youtube", vid.youtube_id)
     text = student.get(f"/api/lessons/{lesson_of(s, position=2).id}").json()
     assert (text["video_provider"], text["youtube_id"]) == (None, None)
+
+
+@needs_db
+@pytest.mark.xfail(strict=True, reason="VID-GAP-1: any https link is accepted, broken YouTube links included")
+@pytest.mark.parametrize("url", [
+    "https://www.youtube.com/watch?v=short",
+    "https://www.youtube.com/playlist?list=PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG",
+    "https://www.youtube.com/@borisTrushin",
+    "https://www.youtube.com/shorts/aqz-KE-bpKQ",
+])
+def test_vd21_link_that_is_not_one_youtube_video_is_rejected(env, url):
+    s, login = env
+    l = lesson_of(s)
+    r = login(TEACHER).put(f"/api/staff/lessons/{l.id}", json=lesson_body(l, video_url=url, video_duration=600))
+    assert r.status_code == 422
+
+
+@needs_db
+@pytest.mark.xfail(strict=True, reason="VID-GAP-1: the database does not check the YouTube link form")
+def test_vd22_database_rejects_non_canonical_youtube_link(env):
+    s, _ = env
+    l = lesson_of(s)
+    with pytest.raises(IntegrityError):
+        with s.begin_nested():
+            l.video_url, l.video_duration = "https://youtu.be/FENzriAjRP4", 363
+            s.flush()
