@@ -47,3 +47,29 @@
 | Y11 | В форме урока подсказка «Ссылка на HTML5-видео или YouTube» вместо «не iframe»; ошибки 422 показываются как есть | Ерасыл |
 | Y12 | Перед каждым показом и раз в неделю — `python testing/check_lesson_videos.py`. Недоступное видео заменяется по [LESSON_VIDEOS.md](LESSON_VIDEOS.md) | Олжас |
 
+## 4. Как работает просмотр YouTube
+
+```mermaid
+sequenceDiagram
+    actor S as Ученик
+    participant F as Frontend (YouTubeVideo)
+    participant Y as YouTube IFrame API
+    participant B as Backend
+    participant D as PostgreSQL
+    S->>F: Открывает урок
+    F->>B: GET /api/lessons/{id}
+    B-->>F: video_provider=youtube, youtube_id, video_duration
+    F->>Y: new YT.Player(youtube_id, nocookie, rel=0)
+    Y-->>F: onReady, getDuration() (сверка Y8)
+    S->>Y: Play
+    loop каждые 250 мс, пока PLAYING и вкладка видна
+        F->>Y: getCurrentTime()
+        F->>F: копит участок, обрыв при скачке > 2 с
+    end
+    F->>B: POST /lessons/{id}/watch {start, end} (участок ≤ 10 с)
+    B->>D: объединить участки, watched_seconds
+    B-->>F: video_percent, completed (≥ 90%)
+    Y-->>F: onError 100/101/150
+    F-->>S: «Видео недоступно» + ссылка на YouTube (Y9)
+```
+
