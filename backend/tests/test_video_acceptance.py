@@ -2,8 +2,8 @@
 
 VD-01..03 check the analyst's catalog and need no database.
 VD-10.. run against PostgreSQL like the other acceptance files.
-xfail(strict=True) marks an agreed requirement that is not implemented yet: the test
-starts failing with XPASS once the task is done, and its owner removes the marker.
+VD-20..24 were strict xfail on 23.11 (gaps VID-GAP-1, 3, 4) and pass since the
+YouTube integration landed.
 """
 import math
 import os
@@ -91,10 +91,9 @@ def test_vd10_youtube_lesson_completes_by_the_same_90_percent_rule(env):
     assert seek.status_code == 422  # a jump over the whole video is not a watched span
 
 
-# ---------- Confirmed gaps (VIDEO_TECHNICAL_DESCRIPTION, section 9)
+# ---------- Closed gaps (VIDEO_TECHNICAL_DESCRIPTION, section 9)
 
 @needs_db
-@pytest.mark.xfail(strict=True, reason="VID-GAP-3: YouTube links are stored as typed, API has no video source")
 def test_vd20_youtube_link_is_normalized_and_typed(env):
     s, login = env
     teacher, student = login(TEACHER), login(STUDENT)
@@ -111,7 +110,6 @@ def test_vd20_youtube_link_is_normalized_and_typed(env):
 
 
 @needs_db
-@pytest.mark.xfail(strict=True, reason="VID-GAP-1: any https link is accepted, broken YouTube links included")
 @pytest.mark.parametrize("url", [
     "https://www.youtube.com/watch?v=short",
     "https://www.youtube.com/playlist?list=PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG",
@@ -126,7 +124,6 @@ def test_vd21_link_that_is_not_one_youtube_video_is_rejected(env, url):
 
 
 @needs_db
-@pytest.mark.xfail(strict=True, reason="VID-GAP-1: the database does not check the YouTube link form")
 def test_vd22_database_rejects_non_canonical_youtube_link(env):
     s, _ = env
     l = lesson_of(s)
@@ -137,7 +134,6 @@ def test_vd22_database_rejects_non_canonical_youtube_link(env):
 
 
 @needs_db
-@pytest.mark.xfail(strict=True, reason="VID-GAP-4: seed does not attach catalog videos to lessons")
 def test_vd23_seed_attaches_catalog_video_to_every_seed_lesson(env):
     import lesson_videos
     s, _ = env
@@ -150,7 +146,6 @@ def test_vd23_seed_attaches_catalog_video_to_every_seed_lesson(env):
 
 
 @needs_db
-@pytest.mark.xfail(strict=True, reason="VID-GAP-4: seed does not attach catalog videos to lessons")
 def test_vd24_seed_keeps_teacher_video_and_is_repeatable(env):
     import lesson_videos
     from app.models import LessonProgress
