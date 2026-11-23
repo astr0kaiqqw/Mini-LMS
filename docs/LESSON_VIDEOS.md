@@ -78,3 +78,48 @@
 | 8 | Определитель и обратимость | [ОПРЕДЕЛИТЕЛЬ МАТРИЦЫ 2х2 3х3 4x4 свойства определителя](https://www.youtube.com/watch?v=UikJ3Gma6H0) | физика ОГЭ математика ЕГЭ - Романов Владимир | 13:34 |
 | 9 | Линейная независимость | [Линейная зависимость и  линейная независимость  векторов.](https://www.youtube.com/watch?v=LaXL4QgQBig) | Виктор Глазнев | 16:15 |
 | 10 | Собственные векторы | [Суть линейной алгебры: #14. Собственные векторы и собственные значе…](https://www.youtube.com/watch?v=khMBBxLJLcw) | Vert Dider | 17:14 |
+
+### English (`english`), 83 мин
+
+| № | Урок | Видео | Автор | Длит. |
+|---|---|---|---|---|
+| 1 | Приветствия и представление | [Английский для начинающих. Приветствие](https://www.youtube.com/watch?v=zFzek_xKaLA) | ED | 8:07 |
+| 2 | Личные местоимения и be | [Урок 1. Глагол To Be в настоящем времени. A1 Elementary. #НЗА](https://www.youtube.com/watch?v=gZE0DdpwRew) | Инглиш Шоу: грамматика | 4:28 |
+| 3 | Артикли и множественное число | [Артикли в английском · Грамматика английского · Онлайн-школа «Инглекс»](https://www.youtube.com/watch?v=eJnejBp9edA) | Инглекс | 7:26 |
+| 4 | Present Simple | [Present Simple. ВСЕ ПРОЩЕ, чем вы думаете!](https://www.youtube.com/watch?v=6Qd1xAikoQc) | Инглиш Шоу | 5:22 |
+| 5 | Вопросы и отрицания | [Вспомогательные глаголы DO или DOES - Present Simple](https://www.youtube.com/watch?v=GOqIL8gYEf0) | Английский с Еленой Дубровченко | 7:45 |
+| 6 | Предлоги места и времени | [5 минут, чтобы разобраться в предлогах на английском: метод треугол…](https://www.youtube.com/watch?v=cgYMtuFa8Iw) | Skyeng – онлайн-школа иностранных языков | 8:04 |
+| 7 | Present Continuous | [Present Continuous · Простое объяснение для начинающих](https://www.youtube.com/watch?v=wB9Wwizcgvc) | Английский с Ириной Кузьминой | 7:40 |
+| 8 | Past Simple | [Past Simple — просто, понятно, быстро · Грамматика английского язык…](https://www.youtube.com/watch?v=H_q9D6NHEuI) | ED | 13:40 |
+| 9 | Планы на будущее | [Will vs be going to · Грамматика английского · Онлайн-школа «Инглекс»](https://www.youtube.com/watch?v=MrbUPmpESVY) | Инглекс | 13:44 |
+| 10 | Короткое связное письмо | [ЕГЭ Английский - Раздел 4 - личное письмо другу - универсальный шаблон](https://www.youtube.com/watch?v=xqBPNN8S2dQ) | Pro English | 6:55 |
+
+### Python for Beginners (`python-beginners`), 139 мин
+
+| № | Урок | Видео | Автор | Длит. |
+|---|---|---|---|---|
+| 1 | Первый запуск и print | [Урок 1. Функция print() - Изучение Python с нуля для начинающих](https://www.youtube.com/watch?v=ki6mKMyiCWY) | /coderoffka - Изучение Python c нуля | 12:20 |
+| 2 | Переменные и типы | [Начало покорения Python / № 2 - Переменные и типы данных. Функция t…](https://www.youtube.com/watch?v=Wnm8Bk4_lBY) | Информатика без воды | 16:39 |
+| 3 | Ввод и преобразование | [#6. Функции print() и input(). Преобразование строк в числа int() и…](https://www.youtube.com/watch?v=8hzpSR_Qaj8) | selfedu | 17:49 |
+| 4 | Условия | [Уроки Python / Конструкция if elif else - если то иначе - Условная…](https://www.youtube.com/watch?v=bmS1QmE6wYM) | Изучаем мир ИТ / Олег Шпагин / Программирование | 8:54 |
+| 5 | Циклы | [Python с нуля. Урок 4 · Циклы (for, while)](https://www.youtube.com/watch?v=sZ0EIwgLblY) | Иван Викторович | 10:31 |
+| 6 | Списки и срезы | [#14. Срезы списков и сравнение списков · Python для начинающих](https://www.youtube.com/watch?v=Vx3s01Yb1P8) | selfedu | 13:37 |
+| 7 | Словари и множества | [Уроки Python с нуля / #10 – Словари (dict) и работа с ними](https://www.youtube.com/watch?v=W2oO1Y-QDzo) | Школа itProger / Программирование | 16:09 |
+| 8 | Функции | [35 Функции (def) в Python. Определение и вызов функции](https://www.youtube.com/watch?v=DJAlfolEv9A) | egoroff_channel | 11:31 |
+| 9 | Файлы и исключения | [Python с нуля. Урок 9 · Файлы и исключения](https://www.youtube.com/watch?v=zlp6gD7UdOA) | Иван Викторович | 15:05 |
+| 10 | Мини-проект: журнал оценок | [Работаем с JSON в Python. Парсинг JSON, сохраняем JSON в файл](https://www.youtube.com/watch?v=rIhygmw9HZM) | egoroff_channel | 16:27 |
+
+### C++ for Beginners (`cpp-beginners`), 130 мин
+
+| № | Урок | Видео | Автор | Длит. |
+|---|---|---|---|---|
+| 1 | Компиляция и первая программа | [#1. Первая программа на С++ · Язык С++ для начинающих](https://www.youtube.com/watch?v=c7Nb0lJHVtU) | selfedu | 9:30 |
+| 2 | Типы и переменные | [Типы данных в C++. C++ для начинающих. Урок #4.](https://www.youtube.com/watch?v=pwUNLjgw7lY) | #SimpleCode | 6:44 |
+| 3 | Ввод и операторы | [#2. Ввод-вывод с помощью объектов cin и cout · Язык С++ для начинающих](https://www.youtube.com/watch?v=mi1YqRF03IQ) | selfedu | 11:06 |
+| 4 | Условия | [If else. Конструкция логического выбора if.  Лесенка if - else if.…](https://www.youtube.com/watch?v=k_YFH3PezqA) | #SimpleCode | 19:25 |
+| 5 | Циклы | [Уроки C++ с нуля / Урок #6 - Циклы For, While, Do while](https://www.youtube.com/watch?v=Fh3huPx-kPI) | Гоша Дударь | 10:16 |
+| 6 | Функции | [Функции c++ примеры. Синтаксис. Объявление, реализация функции. Пар…](https://www.youtube.com/watch?v=HFH65-sNQmI) | #SimpleCode | 19:25 |
+| 7 | Строки и vector | [C++ · std::vector - векторы, как создать, вывести на печать, добавл…](https://www.youtube.com/watch?v=KPV89oSv18E) | Кирилл «Polchasa» Сапожников | 7:47 |
+| 8 | Ссылки и const | [c++ ссылки что это. c++ ссылки и указатели разница. Указатель на сс…](https://www.youtube.com/watch?v=hZOX-LlUETE) | #SimpleCode | 19:52 |
+| 9 | Структуры | [Структуры в C++ · struct C++. Разница между структурой и классом. И…](https://www.youtube.com/watch?v=EWJqZN7ifI0) | #SimpleCode | 10:23 |
+| 10 | Файлы и мини-проект | [Чтение и запись в файл с++ используя класс fstream c++. Изучение С+…](https://www.youtube.com/watch?v=bTysglLJ8No) | #SimpleCode | 16:21 |
