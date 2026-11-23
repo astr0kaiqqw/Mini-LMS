@@ -168,3 +168,26 @@ VIDEOS: dict[str, dict[str, Video]] = {
         'Ретроспектива': Video('OYUw-jZAd2E', 588, 'Dmitry Blinov', 'Как провести ретроспективу – Инструкция за 10 минут (Agile Retrospective) DBlinov.com'),
     },
 }
+
+
+def apply(s) -> int:
+    """Attach catalog videos to seeded lessons (Y10). Returns how many lessons got a video.
+
+    Only lessons of catalog courses whose title matches and whose video_url is empty:
+    a teacher's own video is never replaced, a rerun changes nothing, demo progress stays (D3).
+    """
+    from sqlalchemy import select
+    from app.models import Course, Lesson, Module
+
+    added = 0
+    for slug, videos in VIDEOS.items():
+        course = s.scalar(select(Course).where(Course.slug == slug))
+        if not course:
+            continue
+        for lesson in s.scalars(select(Lesson).join(Module).where(Module.course_id == course.id)):
+            video = videos.get(lesson.title)
+            if video and not lesson.video_url:
+                lesson.video_url, lesson.video_duration = watch_url(video.youtube_id), video.seconds
+                added += 1
+    s.flush()
+    return added
