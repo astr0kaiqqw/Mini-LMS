@@ -92,6 +92,13 @@ class Module(Base):
     position: Mapped[int] = mapped_column()
 
 
+# Y4: a YouTube link is stored only as https://www.youtube.com/watch?v=<11-char id>.
+YOUTUBE_URL_CHECK = (
+    "video_url IS NULL OR video_url NOT LIKE '%youtu%' "
+    "OR video_url ~ '^https://www[.]youtube[.]com/watch[?]v=[A-Za-z0-9_-]{11}$'"
+)
+
+
 class Lesson(Base):
     __tablename__ = "lessons"
     __table_args__ = (
@@ -102,6 +109,7 @@ class Lesson(Base):
             "(video_url IS NULL AND video_duration IS NULL) OR (video_url IS NOT NULL AND video_duration IS NOT NULL AND video_duration > 0)",
             name="ck_lessons_video",
         ),
+        CheckConstraint(YOUTUBE_URL_CHECK, name="ck_lessons_youtube_url"),
         CheckConstraint("length(trim(title)) > 0", name="ck_lessons_title"),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
