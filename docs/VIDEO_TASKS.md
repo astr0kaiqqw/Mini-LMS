@@ -79,3 +79,12 @@ flowchart LR
 
 **Готово:** QA-58 пройден. Зависит от VIDEO-URL.
 
+## tilektes-ismail — проверки БД
+
+### TEST-VIDEO-DB · Тест-кейсы ограничения и seed
+
+- В `testing/TEST_CASES.md`: случаи для `ck_lessons_youtube_url` (каноническая ссылка, `youtu.be`, `youtube-nocookie`, HTML5, `NULL`) и для повторного запуска seed.
+- Выполнить их на `mini_lms_test_*` после DB-VIDEO-1 и DB-VIDEO-2, записать результат в `docs/DB_TEST_REPORT.md`.
+
+**Готово:** кейсы в документе, у каждого фактический результат.
+
