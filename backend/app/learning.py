@@ -157,6 +157,11 @@ def login(data: Login, response: Response, s: Session = Depends(db)):
 
 
 def start_session(s, response, user):
+    s.execute(
+        delete(LoginSession).where(
+            LoginSession.user_id == user.id, LoginSession.expires_at <= now()
+        )
+    )
     token = secrets.token_urlsafe(32)
     s.add(
         LoginSession(
