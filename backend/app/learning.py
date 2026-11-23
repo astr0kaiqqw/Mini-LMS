@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from .db import SessionLocal
+from . import video as video_source
 from .models import (
     User,
     Role,
@@ -504,6 +505,7 @@ def get_lesson(lesson_id: int, user=Depends(current), s: Session = Depends(db)):
         duration_minutes=l.duration_minutes,
         video_url=l.video_url,
         video_duration=l.video_duration,
+        **dict(zip(("video_provider", "youtube_id"), video_source.describe(l.video_url))),
         **progress_dict(s.get(LessonProgress, (user.id, l.id)), l),
     )
 
@@ -860,10 +862,12 @@ class LessonInput(ModuleInput):
     def video(self):
         if bool(self.video_url) != bool(self.video_duration):
             raise ValueError("Видео требует URL и точную длительность в секундах")
+        if self.video_url:
+            self.video_url = video_source.normalize(self.video_url)
         if self.video_url and not self.video_url.startswith(
             ("https://", "http://localhost:", "http://127.0.0.1:")
         ):
-            raise ValueError("Нужна ссылка HTTPS на HTML5 видео")
+            raise ValueError("Нужна ссылка HTTPS на видео YouTube или HTML5-файл")
         return self
 
 
