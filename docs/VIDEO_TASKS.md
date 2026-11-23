@@ -40,3 +40,23 @@ flowchart LR
 
 **Готово:** `test_vd20` и все 4 случая `test_vd21` проходят без xfail; `test_learning.py` зелёный.
 
+## Руслан — база данных и seed
+
+### DB-VIDEO-1 · Миграция `0009_youtube_video_url` (VID-GAP-1; Y4)
+
+- Ограничение `ck_lessons_youtube_url` из раздела 5 описания: `NOT VALID`, затем `VALIDATE`.
+- Перед ним — запрос на неподходящие строки. Если они есть, миграция сначала приводит их к форме `watch?v=ID` (функция та же, что у Ануара).
+- `downgrade()` снимает ограничение. Проверить `upgrade → downgrade → upgrade` и `alembic check`.
+- То же ограничение — в `models.py`, иначе `alembic check` покажет расхождение.
+
+**Готово:** `test_vd22` проходит без xfail. Зависит от VIDEO-URL (общая функция нормализации).
+
+### DB-VIDEO-2 · Видео из каталога в seed (VID-GAP-4; Y10, решения D3, D4)
+
+- Функция `apply(s)` в `database/seeds/lesson_videos.py`. Для каждого курса из `VIDEOS` найти уроки по названию. Если `video_url` пуст — поставить `watch_url(id)` и `seconds`. Иначе не трогать.
+- Демо-прогресс не удалять (D3). `duration_minutes` — по решению D4.
+- Вызвать `apply()` в `learning_demo.py` после создания уроков, чтобы `make up` поднимал курсы с видео.
+- С видео в seed падает `test_completion_survives_new_login_and_is_private` (проверено 23.11 черновой `apply()`): он завершает урок кнопкой и получает 422. Тесту нужен урок без видео — чинить тест, а не правило V3.
+
+**Готово:** `test_vd23`, `test_vd24` без xfail; `test_learning.py`, `test_quiz_acceptance.py` зелёные. **Влить после UI-VIDEO-PLAYER.**
+
