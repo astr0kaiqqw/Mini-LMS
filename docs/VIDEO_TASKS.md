@@ -28,3 +28,15 @@ flowchart LR
 
 > **Порядок важен.** DB-VIDEO-2 вливать только после UI-VIDEO-PLAYER. Урок с видео нельзя завершить кнопкой (V3). Если видео появятся в БД раньше плеера, все 120 уроков станут незавершаемыми, и квизы не откроются.
 
+## Ануар — backend
+
+### VIDEO-URL · Приём ссылок YouTube и поля API (VID-GAP-1, VID-GAP-3; Y1–Y3, Y5)
+
+- В `LessonInput.video()` ([learning.py:743](../backend/app/learning.py#L743)): если хост `youtube.com`, `www.youtube.com`, `m.youtube.com`, `youtu.be`, `youtube-nocookie.com` или `www.youtube-nocookie.com` — достать ID из `watch?v=`, `/embed/` или пути `youtu.be`, проверить `^[A-Za-z0-9_-]{11}$` и заменить ссылку на `https://www.youtube.com/watch?v=ID`.
+- Плейлист без `v`, канал, `/shorts/`, неверный ID — 422 «Нужна ссылка на одно видео YouTube».
+- Разбирать через `urllib.parse`, не регуляркой по всей строке: `youtube.com.evil.test` — не YouTube.
+- `get_lesson()` ([learning.py:376](../backend/app/learning.py#L376)): добавить `video_provider` (`"youtube"`, `"html5"` или `None`) и `youtube_id`. Одна функция определения на сервере, фронт ссылку не разбирает.
+- Остальные ссылки HTML5 — как сейчас.
+
+**Готово:** `test_vd20` и все 4 случая `test_vd21` проходят без xfail; `test_learning.py` зелёный.
+
