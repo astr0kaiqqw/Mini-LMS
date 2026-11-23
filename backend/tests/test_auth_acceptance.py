@@ -251,7 +251,6 @@ def test_au23_expired_sessions_cleaned_on_login(env):
     assert sessions_of(s, uid, expired_only=True) == 0
 
 
-@pytest.mark.xfail(strict=True, reason="AUTH-GAP-5: staff can self-enroll and appear as students")
 def test_au24_staff_cannot_self_enroll(actors):
     s, clients, c, ids = actors
     assert clients["foreign"].post(f"/api/courses/{c.id}/enroll").status_code == 403
