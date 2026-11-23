@@ -143,4 +143,16 @@ VIDEOS: dict[str, dict[str, Video]] = {
         'Индексы и EXPLAIN': Video('LpEwssOYRKA', 640, 'Listen IT', 'Что такое SQL ИНДЕКСЫ за 10 минут: Объяснение с примерами'),
         'Миграции и резервирование': Video('SD6_EPg0Aqk', 898, 'Артём Шумейко', 'Alembic - Как делать Миграции Базы Данных на Python #13'),
     },
+    'web-lab': {
+        'Как работает веб': Video('93cov6yT4OY', 966, 'Droider', 'КАК РАБОТАЕТ HTTP? – АНАТОМИЯ ИНТЕРНЕТА'),
+        'HTML: структура страницы': Video('MBe1h80ghKA', 453, 'Listen IT', 'Что такое HTML за 7 минут'),
+        'Формы и доступность': Video('_in4LAdxAUA', 279, 'Александр Ламков — Friendly Frontend', '11. HTML формы. Теги form, fieldset, legend, label и поле ввода input'),
+        'CSS и блочная модель': Video('oQDNPNZ72Ig', 556, 'Александр Ламков — Friendly Frontend', '3. Блочная модель в CSS — свойства display, width, height, padding, margin, border и box-sizing'),
+        'Flexbox и Grid': Video('YG8Vhz1pAsU', 994, 'Александр Ламков — Friendly Frontend', '12. CSS Flexbox Layout. Флексы в CSS. Гайд по флексбокс'),
+        'JavaScript и события': Video('H9XRtCjD3hA', 551, 'Василий Муравьев', 'Уроки Javascript #1. Обработчик событий - AddEventListener.'),
+        'Асинхронные запросы': Video('SHiUyM_fFME', 852, 'Владилен Минин', 'Урок 8. JavaScript. Как работает Async, Await. Работа с сервером c fetch'),
+        'React и компоненты': Video('GeulXZP_kZ8', 911, 'Frontend Fundamentals | Александр Караджиков', 'Все что нужно знать о REACT для НОВИЧКА за 15 минут | Изучаем Реакт'),
+        'Маршруты и доступ': Video('0auS9DNTmzE', 485, 'Михаил Непомнящий', 'React Router 6 - базовый роутинг React-приложения'),
+        'Мини-проект: каталог': Video('IW_7b0nJoSE', 322, 'Rutina dev', 'Поисковой фильтр в реакт проекте? 🔍 | Как сделать живой поиск на Javascript'),
+    },
 }
