@@ -362,6 +362,8 @@ def course_detail(course_id: int, user=Depends(current), s: Session = Depends(db
 
 @router.post("/courses/{course_id}/enroll")
 def enroll(course_id: int, user=Depends(current), s: Session = Depends(db)):
+    if role(s, user) != "student":
+        raise HTTPException(403, "Записываться на курсы могут только ученики")
     course = s.get(Course, course_id)
     if not course or course.status != "published":
         raise HTTPException(404, "Курс не найден")
