@@ -71,6 +71,8 @@ make up
 
 Авторизация и права: [техническое описание и матрица прав](docs/AUTH_TECHNICAL_DESCRIPTION.md), [сценарии приёмки](testing/AUTH_ACCEPTANCE.md), [задания команде](docs/AUTH_TASKS.md), [отчёт аналитика W12](docs/ANALYSIS_W12_REPORT.md).
 
+Видео YouTube к урокам: [каталог 120 видео](docs/LESSON_VIDEOS.md), [техническое описание](docs/VIDEO_TECHNICAL_DESCRIPTION.md), [сценарии приёмки](testing/VIDEO_ACCEPTANCE.md), [задания команде](docs/VIDEO_TASKS.md), [отчёт аналитика W13](docs/ANALYSIS_W13_REPORT.md). Проверка доступности видео: `python testing/check_lesson_videos.py`.
+
 ### ID аккаунтов и восстановление пароля
 
 Миграция `0007` выдаёт ID существующим аккаунтам по дате их создания.
