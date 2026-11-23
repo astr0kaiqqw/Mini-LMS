@@ -60,3 +60,22 @@ flowchart LR
 
 **Готово:** `test_vd23`, `test_vd24` без xfail; `test_learning.py`, `test_quiz_acceptance.py` зелёные. **Влить после UI-VIDEO-PLAYER.**
 
+## Ерасыл — frontend
+
+### UI-VIDEO-PLAYER · Плеер YouTube с учётом просмотра (VID-GAP-2; Y6–Y9)
+
+- Компонент `YouTubeVideo` рядом с `TrackedVideo` ([main.tsx:583](../frontend/src/main.tsx#L583)); в `LessonView` выбирать его по `video_provider === "youtube"`.
+- Скрипт `https://www.youtube.com/iframe_api` загружать один раз (общий промис), `host: "https://www.youtube-nocookie.com"`, `playerVars: { rel: 0, origin: location.origin, playsinline: 1 }`.
+- Учёт: **каждые 250 мс** в состоянии `PLAYING` читать `getCurrentTime()` и `getPlaybackRate()` и передавать в ту же логику `tick()/flush()/reset()`. Её лучше вынести в общую функцию, чтобы два плеера считали одинаково. `PAUSED`, `BUFFERING`, `ENDED`, `onPlaybackRateChange`, скрытая вкладка — `reset()`.
+- `onReady`: сверить `getDuration()` с `video_duration` (Y8). `onError` 2/5/100/101/150 — сообщение и ссылка «Открыть на YouTube» (Y9).
+- Убирать плеер при уходе со страницы (`destroy()`), отправлять последний участок.
+- Плеер в ширину блока, пропорции 16:9.
+
+**Готово:** QA-50…QA-57 и QA-59 пройдены, запись экрана QA-55 и QA-56 в PR.
+
+### UI-VIDEO-FORM · Форма урока (Y11)
+
+- Подсказка поля: «Ссылка на HTML5-видео или YouTube» вместо «не iframe» ([main.tsx:1452](../frontend/src/main.tsx#L1452)); текст 422 сервера показывать как есть.
+
+**Готово:** QA-58 пройден. Зависит от VIDEO-URL.
+
