@@ -580,15 +580,11 @@ function CourseView() {
     </>
   );
 }
-function TrackedVideo({
-  lesson,
-  onProgress,
-}: {
-  lesson: Row;
-  onProgress: (p: Row) => void;
-}) {
-  const video = useRef<HTMLVideoElement>(null),
-    last = useRef<{ time: number; wall: number } | null>(null),
+// Shared watch accounting for both players (VIDEO_TECHNICAL_DESCRIPTION, V7/Y7): only
+// continuous playback at normal speed becomes a span; pauses, seeks, hidden tab and
+// rate changes cut the span. The server merges spans and completes the lesson at 90%.
+function useWatchTracker(lessonId: number, onProgress: (p: Row) => void) {
+  const last = useRef<{ time: number; wall: number } | null>(null),
     pending = useRef<[number, number] | null>(null),
     chain = useRef(Promise.resolve());
   const [error, setError] = useState("");
@@ -599,7 +595,7 @@ function TrackedVideo({
     chain.current = chain.current.then(async () => {
       try {
         onProgress(
-          await api(`/lessons/${lesson.id}/watch`, "POST", {
+          await api(`/lessons/${lessonId}/watch`, "POST", {
             start: span[0],
             end: span[1],
           }),
@@ -614,24 +610,26 @@ function TrackedVideo({
     flush();
     last.current = null;
   }
-  function tick() {
-    const v = video.current!,
-      wall = performance.now() / 1000;
-    if (v.paused || v.seeking || document.hidden) {
+  function restart() {
+    last.current = null;
+  }
+  function sample(time: number, rate: number, playing: boolean) {
+    const wall = performance.now() / 1000;
+    if (!playing || document.hidden) {
       reset();
       return;
     }
     const prev = last.current;
-    last.current = { time: v.currentTime, wall };
+    last.current = { time, wall };
     if (!prev) return;
-    const delta = v.currentTime - prev.time,
+    const delta = time - prev.time,
       elapsed = wall - prev.wall;
-    if (delta <= 0 || delta > Math.min(2, elapsed * v.playbackRate + 0.2)) {
+    if (delta <= 0 || delta > Math.min(2, elapsed * rate + 0.2)) {
       flush();
       return;
     }
-    if (!pending.current) pending.current = [prev.time, v.currentTime];
-    else pending.current[1] = v.currentTime;
+    if (!pending.current) pending.current = [prev.time, time];
+    else pending.current[1] = time;
     if (pending.current[1] - pending.current[0] >= 4) flush();
   }
   useEffect(() => {
@@ -643,7 +641,22 @@ function TrackedVideo({
       document.removeEventListener("visibilitychange", hidden);
       reset();
     };
-  }, [lesson.id]);
+  }, [lessonId]);
+  return { sample, reset, restart, error, setError };
+}
+function TrackedVideo({
+  lesson,
+  onProgress,
+}: {
+  lesson: Row;
+  onProgress: (p: Row) => void;
+}) {
+  const video = useRef<HTMLVideoElement>(null);
+  const t = useWatchTracker(lesson.id, onProgress);
+  function tick() {
+    const v = video.current!;
+    t.sample(v.currentTime, v.playbackRate, !v.paused && !v.seeking);
+  }
   return (
     <>
       <video
@@ -652,18 +665,14 @@ function TrackedVideo({
         controls
         preload="metadata"
         onTimeUpdate={tick}
-        onSeeking={reset}
-        onSeeked={() => {
-          last.current = null;
-        }}
-        onPause={reset}
-        onEnded={reset}
-        onPlay={() => {
-          last.current = null;
-        }}
-        onRateChange={reset}
+        onSeeking={t.reset}
+        onSeeked={t.restart}
+        onPause={t.reset}
+        onEnded={t.reset}
+        onPlay={t.restart}
+        onRateChange={t.reset}
         onError={() =>
-          setError(
+          t.setError(
             "Видео недоступно или источник не поддерживает HTML5. Прогресс не начисляется.",
           )
         }
@@ -672,7 +681,112 @@ function TrackedVideo({
         Завершение после 90% уникального просмотра. Перемотка не добавляет
         проценты.
       </p>
-      {error && <p role="alert">{error}</p>}
+      {t.error && <p role="alert">{t.error}</p>}
+    </>
+  );
+}
+let youtubeApi: Promise<any> | null = null;
+function loadYouTube(): Promise<any> {
+  const w = window as any;
+  if (w.YT?.Player) return Promise.resolve(w.YT);
+  youtubeApi ??= new Promise((resolve, reject) => {
+    const previous = w.onYouTubeIframeAPIReady;
+    w.onYouTubeIframeAPIReady = () => {
+      previous?.();
+      resolve(w.YT);
+    };
+    const script = document.createElement("script");
+    script.src = "https://www.youtube.com/iframe_api";
+    script.onerror = () => {
+      youtubeApi = null;
+      reject(Error("YouTube недоступен"));
+    };
+    document.head.append(script);
+  });
+  return youtubeApi;
+}
+// Y6-Y9: official IFrame Player API on youtube-nocookie.com, sampled every 250 ms so that
+// a 2x speed step (~0.5 s) never looks like a seek.
+function YouTubeVideo({
+  lesson,
+  onProgress,
+}: {
+  lesson: Row;
+  onProgress: (p: Row) => void;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  const t = useWatchTracker(lesson.id, onProgress);
+  const [unavailable, setUnavailable] = useState(false),
+    [warning, setWarning] = useState("");
+  useEffect(() => {
+    let alive = true,
+      timer = 0,
+      player: any = null;
+    setUnavailable(false);
+    setWarning("");
+    loadYouTube()
+      .then((YT) => {
+        if (!alive || !box.current) return;
+        const mount = document.createElement("div");
+        box.current.replaceChildren(mount);
+        const playing = () =>
+          player?.getPlayerState?.() === YT.PlayerState.PLAYING;
+        player = new YT.Player(mount, {
+          host: "https://www.youtube-nocookie.com",
+          videoId: lesson.youtube_id,
+          playerVars: { rel: 0, playsinline: 1, origin: location.origin },
+          events: {
+            onReady: () => {
+              const real = player.getDuration();
+              if (real && Math.abs(real - lesson.video_duration) > 3)
+                setWarning(
+                  "Длительность видео на YouTube изменилась — сообщите преподавателю.",
+                );
+            },
+            onStateChange: () => (playing() ? t.restart() : t.reset()),
+            onPlaybackRateChange: () => t.reset(),
+            onError: () => {
+              t.reset();
+              setUnavailable(true);
+            },
+          },
+        });
+        timer = window.setInterval(() => {
+          if (playing())
+            t.sample(player.getCurrentTime(), player.getPlaybackRate(), true);
+        }, 250);
+      })
+      .catch(() => {
+        if (alive) setUnavailable(true);
+      });
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+      t.reset();
+      player?.destroy?.();
+    };
+  }, [lesson.id]);
+  const link = `https://www.youtube.com/watch?v=${lesson.youtube_id}`;
+  return (
+    <>
+      {unavailable ? (
+        <p className="notice" role="alert">
+          Видео недоступно на сайте. Прогресс не начисляется.{" "}
+          <a href={link} target="_blank" rel="noopener noreferrer">
+            Открыть на YouTube
+          </a>
+        </p>
+      ) : (
+        <div className="youtube-frame">
+          <div ref={box} />
+        </div>
+      )}
+      <p className="micro">
+        Видео с YouTube. Завершение после 90% уникального просмотра; перемотка,
+        пауза и фоновая вкладка не добавляют проценты.
+      </p>
+      {warning && <p role="alert">{warning}</p>}
+      {t.error && <p role="alert">{t.error}</p>}
     </>
   );
 }
@@ -703,7 +817,11 @@ function LessonView() {
             </p>
             {l.video_url ? (
               <>
-                <TrackedVideo key={l.id} lesson={l} onProgress={setP} />
+                {l.video_provider === "youtube" && l.youtube_id ? (
+                  <YouTubeVideo key={l.id} lesson={l} onProgress={setP} />
+                ) : (
+                  <TrackedVideo key={l.id} lesson={l} onProgress={setP} />
+                )}
                 <p>Просмотрено: {(p || l).video_percent ?? 0}%</p>
               </>
             ) : (
@@ -1449,7 +1567,7 @@ function LessonEditor({
         ["summary", "Краткое описание"],
         ["position", "Порядок"],
         ["duration_minutes", "Длительность, минут"],
-        ["video_url", "Проверенный URL HTML5 видео (не iframe)"],
+        ["video_url", "Ссылка на видео YouTube или прямой HTML5-файл"],
         ["video_duration", "Точная длительность видео, секунд"],
       ].map(([key, label]) => (
         <label key={key}>
@@ -1476,8 +1594,8 @@ function LessonEditor({
         <textarea name="practice" rows={3} defaultValue={l.practice} />
       </label>
       <p className="micro">
-        При замене видео прежний прогресс сбрасывается. Внешние iframe не
-        поддерживаются.
+        При замене видео прежний прогресс сбрасывается. YouTube: ссылка на одно
+        видео (watch, youtu.be или embed), плейлисты и Shorts не принимаются.
       </p>
       <button className="button">Сохранить урок</button>
       <button className="button secondary" type="button" onClick={onSave}>
