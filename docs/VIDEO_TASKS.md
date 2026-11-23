@@ -3,6 +3,8 @@
 Автор: Олжас. Основание: пробелы VID-GAP-1…6 из [технического описания](VIDEO_TECHNICAL_DESCRIPTION.md).
 Срок: до отчёта W14, если на встрече не решим иначе. Перед началом — встреча по решениям D1–D6 (15 минут).
 
+> **Статус на 23.11:** основная часть реализована и влита в `main` — VIDEO-URL, DB-VIDEO-1, DB-VIDEO-2, UI-VIDEO-PLAYER, UI-VIDEO-FORM ([раздел 12 описания](VIDEO_TECHNICAL_DESCRIPTION.md)). Тесты VD-20…VD-24 проходят. За командой: ревью своей части кода (Ануар — `backend/app/video.py`, Руслан — миграция `0009` и `apply()`, Ерасыл — `useWatchTracker` и `YouTubeVideo`), ручные QA-52, QA-54, QA-56…QA-60, TEST-VIDEO-DB, решения D1–D6. Описание заданий ниже оставлено как спецификация.
+
 **Готовый вклад аналитика:** каталог из 120 видео ([LESSON_VIDEOS.md](LESSON_VIDEOS.md), данные — `database/seeds/lesson_videos.py`), скрипт проверки доступности, приёмочные тесты.
 
 **Как понять, что задание готово:** у задания есть тест в `backend/tests/test_video_acceptance.py` с пометкой `xfail(strict=True)` или ручной сценарий в [VIDEO_ACCEPTANCE.md](../testing/VIDEO_ACCEPTANCE.md). Сделал задание — тест падает с **XPASS**. Удали строку `@pytest.mark.xfail(...)`, прогони файл, тест должен пройти. Это доказательство в PR.
