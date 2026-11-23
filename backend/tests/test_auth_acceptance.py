@@ -239,7 +239,6 @@ def test_au22_user_can_change_password(env):
     assert raw_login(STUDENT, "NewPass2026!")[1].status_code == 200
 
 
-@pytest.mark.xfail(strict=True, reason="AUTH-GAP-4: expired sessions are never deleted")
 def test_au23_expired_sessions_cleaned_on_login(env):
     s, _ = env
     client, _ = raw_login(STUDENT)
