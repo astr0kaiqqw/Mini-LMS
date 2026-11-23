@@ -52,3 +52,40 @@ def test_vd02_video_records_are_complete_and_unique():
 def test_vd03_video_load_per_course_stays_under_150_minutes():
     for slug, lessons in VIDEOS.items():
         assert sum(v.seconds for v in lessons.values()) <= 150 * 60, slug  # K5
+
+
+# ---------- Works today: the watch rule does not depend on the video source
+
+def lesson_of(s, slug="calculus-1", position=1):
+    from app.models import Lesson, Module
+    return s.scalar(
+        select(Lesson).join(Module)
+        .where(Module.course_id == course(s, slug).id)
+        .order_by(Module.position, Lesson.position)
+        .offset(position - 1)
+    )
+
+
+def lesson_body(l, **changes):
+    body = dict(title=l.title, position=l.position, summary=l.summary, content=l.content,
+                practice=l.practice, duration_minutes=l.duration_minutes,
+                video_url=l.video_url, video_duration=l.video_duration)
+    return {**body, **changes}
+
+
+@needs_db
+def test_vd10_youtube_lesson_completes_by_the_same_90_percent_rule(env):
+    s, login = env
+    student = login(STUDENT)
+    l = lesson_of(s)
+    v = VIDEOS["calculus-1"][l.title]
+    l.video_url, l.video_duration = watch_url(v.youtube_id), v.seconds
+    s.flush()
+    assert student.post(f"/api/lessons/{l.id}/complete").status_code == 422
+    watched = math.ceil(v.seconds * 0.9)
+    for start in range(0, watched, 10):
+        r = student.post(f"/api/lessons/{l.id}/watch", json={"start": start, "end": min(start + 10, watched)})
+        assert r.status_code == 200, r.text
+    assert r.json()["completed"] is True
+    seek = student.post(f"/api/lessons/{l.id}/watch", json={"start": 0, "end": v.seconds})
+    assert seek.status_code == 422  # a jump over the whole video is not a watched span
