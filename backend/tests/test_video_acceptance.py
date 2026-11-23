@@ -89,3 +89,22 @@ def test_vd10_youtube_lesson_completes_by_the_same_90_percent_rule(env):
     assert r.json()["completed"] is True
     seek = student.post(f"/api/lessons/{l.id}/watch", json={"start": 0, "end": v.seconds})
     assert seek.status_code == 422  # a jump over the whole video is not a watched span
+
+
+# ---------- Confirmed gaps (VIDEO_TECHNICAL_DESCRIPTION, section 9)
+
+@needs_db
+@pytest.mark.xfail(strict=True, reason="VID-GAP-3: YouTube links are stored as typed, API has no video source")
+def test_vd20_youtube_link_is_normalized_and_typed(env):
+    s, login = env
+    teacher, student = login(TEACHER), login(STUDENT)
+    l = lesson_of(s)
+    vid = VIDEOS["calculus-1"][l.title]
+    r = teacher.put(f"/api/staff/lessons/{l.id}", json=lesson_body(
+        l, video_url=f"https://youtu.be/{vid.youtube_id}?t=30&si=share", video_duration=vid.seconds))
+    assert r.status_code == 200, r.text
+    got = student.get(f"/api/lessons/{l.id}").json()
+    assert got["video_url"] == watch_url(vid.youtube_id)
+    assert (got["video_provider"], got["youtube_id"]) == ("youtube", vid.youtube_id)
+    text = student.get(f"/api/lessons/{lesson_of(s, position=2).id}").json()
+    assert (text["video_provider"], text["youtube_id"]) == (None, None)
