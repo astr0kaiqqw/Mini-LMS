@@ -216,7 +216,6 @@ def test_au13_permission_matrix(actors):
 
 # ---------- Confirmed gaps (AUTH_TECHNICAL_DESCRIPTION, section 8)
 
-@pytest.mark.xfail(strict=True, reason="AUTH-GAP-1: no brute-force protection on login")
 def test_au20_login_locked_after_five_failures(env):
     for i in range(5):
         _, r = raw_login(STUDENT, f"guess-{i}")
