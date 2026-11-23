@@ -193,8 +193,11 @@ def seed(s):
 
 
 if __name__ == "__main__":
+    import lesson_videos
+
     with SessionLocal.begin() as session:
         seed(session)
+        print(f"Видео YouTube добавлено к урокам: {lesson_videos.apply(session)}")
     print(
         "Готово: 12 учебных курсов, по 10 уроков и 3 ученика. Исходные записи сохранены."
     )
