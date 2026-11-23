@@ -81,3 +81,18 @@ def test_admin_reset_code_replacement_expiry_and_single_use(env):
         assert teacher.get("/api/me").status_code == 401
         assert client.post("/api/auth/login", json={"email": email, "password": "LearnDemo2026!"}).status_code == 401
         assert client.post("/api/auth/login", json={"email": email, "password": payload["password"]}).status_code == 200
+
+
+def test_reset_password_follows_password_rules(env):
+    session, login = env
+    teacher = login("instructor@demo.example.test")
+    admin = login("administrator@demo.example.test")
+    account = teacher.get("/api/me").json()
+    code = admin.post(f"/api/admin/users/{account['id']}/password-reset-code").json()["code"]
+    payload = {"account_id": account["account_id"], "code": code, "password": "11111111"}
+    with TestClient(app) as client:
+        weak = client.post("/api/auth/password-reset/confirm", json=payload)
+        assert weak.status_code == 422
+        assert weak.json()["detail"] == learning.PASSWORD_RULES
+        # The code is not spent by a rejected password.
+        assert client.post("/api/auth/password-reset/confirm", json=dict(payload, password="Strong2026")).status_code == 200

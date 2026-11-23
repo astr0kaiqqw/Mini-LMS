@@ -225,7 +225,6 @@ def test_au20_login_locked_after_five_failures(env):
     assert r.status_code == 429
 
 
-@pytest.mark.xfail(strict=True, reason="AUTH-GAP-2: trivial passwords are accepted")
 def test_au21_trivial_password_rejected(env):
     _, r = register("weak@demo.example.test", password="11111111")
     assert r.status_code == 422

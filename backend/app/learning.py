@@ -115,6 +115,21 @@ def user_dict(s, u):
     )
 
 
+PASSWORD_RULES = "Пароль: не меньше 8 символов, хотя бы одна буква и одна цифра"
+
+
+def check_password(password, email):
+    """Rules for every new password (decision D2); existing hashes are not rechecked."""
+    if (
+        len(password) < 8
+        or not any(ch.isalpha() for ch in password)
+        or not any(ch.isdigit() for ch in password)
+    ):
+        raise HTTPException(422, PASSWORD_RULES)
+    if password.strip().lower() == email.strip().lower():
+        raise HTTPException(422, "Пароль не должен совпадать с email")
+
+
 class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -179,7 +194,6 @@ def start_session(s, response, user):
 class Register(Login):
     email: str = Field(max_length=254, pattern=r"^\s*[^@\s]+@[^@\s]+\s*$")
     display_name: str = Field(min_length=1, max_length=100)
-    password: str = Field(min_length=8, max_length=200)
     role: Literal["student", "teacher"] = "student"
 
 
@@ -188,6 +202,7 @@ def register(data: Register, response: Response, s: Session = Depends(db)):
     email, name = data.email.strip().lower(), data.display_name.strip()
     if not name:
         raise HTTPException(422, "Укажите имя")
+    check_password(data.password, email)
     if s.scalar(select(User.id).where(User.email == email)):
         raise HTTPException(409, "Этот email уже зарегистрирован")
     role_id = s.scalar(select(Role.id).where(Role.name == data.role))
@@ -202,7 +217,7 @@ def register(data: Register, response: Response, s: Session = Depends(db)):
 class ResetConfirm(BaseModel):
     account_id: str = Field(pattern=r"^[0-9]{12}$")
     code: str = Field(pattern=r"^[A-Za-z2-9]{4}$")
-    password: str = Field(min_length=8, max_length=200)
+    password: str = Field(min_length=1, max_length=200)
 
 
 @router.post("/auth/password-reset/confirm")
@@ -223,6 +238,7 @@ def confirm_password_reset(data: ResetConfirm, response: Response, s: Session = 
         s.commit()
         raise invalid
 
+    check_password(data.password, user.email)
     s.delete(reset)
     s.merge(Credential(user_id=user.id, password_hash=hash_password(data.password)))
     s.execute(delete(LoginSession).where(LoginSession.user_id == user.id))
