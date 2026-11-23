@@ -73,3 +73,18 @@ sequenceDiagram
     F-->>S: «Видео недоступно» + ссылка на YouTube (Y9)
 ```
 
+## 5. Данные
+
+Новых таблиц нет: используются `lessons.video_url`, `lessons.video_duration` и `lesson_progress.intervals`, `watched_seconds`. Меняется одно ограничение (Y4):
+
+```sql
+-- миграция 0009, Руслан. NOT VALID + VALIDATE — чтобы не держать долгую блокировку
+ALTER TABLE lessons ADD CONSTRAINT ck_lessons_youtube_url CHECK (
+    video_url IS NULL OR video_url NOT LIKE '%youtu%'
+    OR video_url ~ '^https://www\.youtube\.com/watch\?v=[A-Za-z0-9_-]{11}$'
+) NOT VALID;
+ALTER TABLE lessons VALIDATE CONSTRAINT ck_lessons_youtube_url;
+```
+
+Перед миграцией проверить, что неподходящих строк нет: `SELECT id, video_url FROM lessons WHERE video_url LIKE '%youtu%'`. Если есть, то сначала привести их к форме Y2.
+
