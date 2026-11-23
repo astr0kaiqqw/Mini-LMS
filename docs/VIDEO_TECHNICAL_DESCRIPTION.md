@@ -4,7 +4,7 @@
 |---|---|
 | Версия | 1.0, 23 ноября 2026 |
 | Автор | Олжас, системный аналитик |
-| Статус | Каталог видео готов; плеер, приём ссылок и заполнение — задания W13 ([VIDEO_TASKS.md](VIDEO_TASKS.md)) |
+| Статус | **Реализовано 23.11** (раздел 12): каталог, приём ссылок, миграция `0009`, плеер YouTube, видео в seed. Остаток — [VIDEO_TASKS.md](VIDEO_TASKS.md) |
 | Проверка | `backend/tests/test_video_acceptance.py`, [сценарии приёмки](../testing/VIDEO_ACCEPTANCE.md) |
 
 ## 1. Цель и объём
@@ -153,3 +153,25 @@ ALTER TABLE lessons VALIDATE CONSTRAINT ck_lessons_youtube_url;
 | Ануар | |
 | Ерасыл | |
 | Олжас | |
+
+## 12. Реализация 23 ноября 2026
+
+| Требование | Где |
+|---|---|
+| Y1–Y3, Y5 — разбор и приведение ссылок, `video_provider`, `youtube_id` | [backend/app/video.py](../backend/app/video.py), `LessonInput.video()` и `get_lesson()` в [learning.py](../backend/app/learning.py) |
+| Y4 — ограничение `ck_lessons_youtube_url` | [0009_youtube_video_url.py](../database/migrations/versions/0009_youtube_video_url.py), [models.py](../backend/app/models.py) |
+| Y6–Y9 — плеер YouTube, опрос 250 мс, сверка длительности, ошибки | `useWatchTracker` (общий для двух плееров) и `YouTubeVideo` в [main.tsx](../frontend/src/main.tsx) |
+| Y10 — видео из каталога в seed | `apply()` в [lesson_videos.py](../database/seeds/lesson_videos.py), вызывается из `learning_demo.py` при запуске |
+| Y11 — подсказка в форме урока | `LessonEditor` в [main.tsx](../frontend/src/main.tsx) |
+
+`apply()` вызывается при запуске (`python database/seeds/learning_demo.py`), а не внутри `seed()`. Поэтому тестовая фикстура по-прежнему получает текстовые уроки, и тесты, которые завершают урок кнопкой, не сломались.
+
+Проверка в браузере (Playwright, локальный запуск, ученик `calculus-1.student1`, урок «Графики и преобразования»):
+
+| Действие | Что сохранилось в `lesson_progress.intervals` |
+|---|---|
+| Play, через 3 с пауза | `[0.2, 2.7]` |
+| 25 с просмотра | `[3.4, 35.9]` — участки уходят на сервер по 4 с |
+| Перемотка с 36 на 400 с | Разрыв 36–400 не засчитан |
+| 10 с на скорости ×2 | `[408.1, 427.6]` — 19,5 с видео засчитаны (опрос 250 мс) |
+| Итог | 62 с из 519 (11,9%), «В процессе» |
