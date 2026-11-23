@@ -107,4 +107,16 @@ VIDEOS: dict[str, dict[str, Video]] = {
         'Резервные копии и инциденты': Video('GqCoVdm6odE', 839, 'Обучение системных администраторов', 'Как не потерять данные: резервное копирование и правило 3-2-1 простыми словами'),
         'Мини-аудит учебного приложения': Video('4Ufdf3t3o3Y', 440, 'Reconholic', 'Весь OWASP Top 10 простыми словами'),
     },
+    'machine-learning-beginners': {
+        'Задачи машинного обучения': Video('ku2oPMPht2I', 697, 'machine learrrning', 'ОБУЧЕНИЕ С УЧИТЕЛЕМ, ОБУЧЕНИЕ БЕЗ УЧИТЕЛЯ, ОБУЧЕНИЕ С ПОДКРЕПЛЕНИЕМ | ЗАДАЧИ МАШИННОГО ОБУЧЕНИЯ'),
+        'Табличные данные': Video('wjDns1IYcPg', 216, 'egoroff_channel', 'Анализ данных с помощью Pandas. Вводное занятие'),
+        'Разделение данных': Video('5UdOdUgDr-c', 686, 'Школа itProger / Программирование', 'Python Data Science / Урок #3 – Основы машинного обучения (Scikit-learn)'),
+        'Подготовка признаков': Video('XsuCOfpf8Ic', 1297, 'machine learrrning', 'StandardScaler| MinMaxScaler | МАСШТАБИРОВАНИЕ ДАННЫХ | МАШИННОЕ ОБУЧЕНИЕ'),
+        'Линейная регрессия': Video('rE43fnoQNPw', 461, 'Душкин объяснит', 'Что такое линейная регрессия? Душкин объяснит'),
+        'Классификация': Video('9BoVCdedvW8', 1197, 'machine learrrning', 'Логистическая Регрессия | Logistic Regression | Линейная модель для классификации |МАШИННОЕ ОБУЧЕНИЕ'),
+        'Метрики': Video('-jplpYLrcdM', 850, 'selfedu', '#23. Показатели precision и recall. F-мера | Машинное обучение'),
+        'Переобучение': Video('m7P7bnLxIc4', 746, 'machine learrrning', 'ПЕРЕОБУЧЕНИЕ И НЕДООБУЧЕНИЕ В МАШИННОМ ОБУЧЕНИИ | overfitting, underfitting для регрессии'),
+        'Кросс-валидация и baseline': Video('Sjof9d8R96E', 551, 'hyperlee', 'Machine Learning. Урок №2. Кросс - валидация/Сross-validation'),
+        'Мини-проект и ограничения': Video('mqp7dWk40HI', 371, 'Школа itProger / Программирование', 'Python Data Science / Урок #1 – Полная обработка данных (Scikit-learn, TensorFlow, PyTorch, Plotly)'),
+    },
 }
