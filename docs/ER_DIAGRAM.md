@@ -97,6 +97,35 @@ erDiagram
 
 Как читать: квиз — это не отдельная таблица, а набор `quiz_questions` всех уроков курса. Квиз открывается, когда у ученика `completed = true` по каждому уроку курса и у каждого урока есть вопрос. Каждая отправка — новая строка `quiz_attempts` с подсчитанным сервером результатом.
 
+## Видео урока (крупно)
+
+Обновлено 23 ноября 2026 (миграция `0008`). Новых таблиц для YouTube не нужно: ссылка и длительность уже есть в `lessons`, учёт просмотра — в `lesson_progress`. Подробно: [VIDEO_TECHNICAL_DESCRIPTION.md](VIDEO_TECHNICAL_DESCRIPTION.md).
+
+```mermaid
+erDiagram
+    courses ||--o{ modules : "содержит"
+    modules ||--o{ lessons : "содержит"
+    lessons ||--o{ lesson_progress : "просмотр"
+    users ||--o{ lesson_progress : "смотрит"
+    lessons {
+        int id PK
+        string title "ключ каталога lesson_videos.py"
+        string video_url "NULL = текстовый урок; YouTube только watch?v=ID"
+        int video_duration "точные секунды; вместе с video_url или оба NULL"
+        int duration_minutes "D4: чтение + видео"
+    }
+    lesson_progress {
+        int user_id PK,FK
+        int lesson_id PK,FK
+        json intervals "объединённые участки [start, end]"
+        float watched_seconds ">= 0"
+        bool completed "watched >= 90% video_duration"
+        bool demo "демо-записи seed"
+    }
+```
+
+Ограничения: `ck_lessons_video` (ссылка и длительность вместе) есть; `ck_lessons_youtube_url` (форма ссылки YouTube) — задание DB-VIDEO-1, миграция `0009`.
+
 ## Вся схема
 
 ```mermaid
@@ -232,3 +261,5 @@ erDiagram
 | E2 | `options` и `answers` хранятся в JSON | Нельзя поставить FK на вариант; ограничения проверяет CHECK (`json_array_length = 4`) и сервер | Для объёма курса достаточно; при редакторе вопросов вынести варианты в таблицу |
 | E3 | У `quiz_attempts` нет ограничения на число попыток | Попытки бесконечные, это осознанное решение (раздел 3 описания) | Если введут лимит, нужен счётчик под блокировкой, как у оценок |
 | E4 | Нет индекса `(user_id, course_id)` у `quiz_attempts`, есть два отдельных | При текущих объёмах не проблема | Добавлять только после EXPLAIN на реальных данных |
+| E5 | Тип источника видео не хранится, определяется по ссылке | Нет колонки, которую можно забыть обновить | Определять на сервере одной функцией (Y5); колонку не добавлять |
+| E6 | `lesson_progress` удаляется целиком при смене видео | Замена удалённого видео обнуляет прогресс этого урока у всех | Осознанно (V6): новое видео — новый просмотр. Предупреждать преподавателя в форме |
