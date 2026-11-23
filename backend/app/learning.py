@@ -4,7 +4,8 @@ import os
 import secrets
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
-from sqlalchemy import select, delete, func
+import math
+from sqlalchemy import and_, case, select, delete, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -32,6 +33,10 @@ from .security import hash_password, verify_password, token_hash
 router = APIRouter(prefix="/api")
 RESET_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 MAX_RESET_ATTEMPTS = 5
+# Decision D1: 5 failed logins within 15 minutes lock the email for 15 minutes.
+MAX_LOGIN_FAILURES = 5
+LOGIN_WINDOW = timedelta(minutes=15)
+LOGIN_LOCK = timedelta(minutes=15)
 
 
 def now():
@@ -126,11 +131,77 @@ class Login(Strict):
     role: Literal["student", "teacher", "admin"] | None = None
 
 
+def minutes_word(n):
+    if n % 10 == 1 and n % 100 != 11:
+        return "минуту"
+    if 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14:
+        return "минуты"
+    return "минут"
+
+
+def check_not_locked(s, email):
+    # Make sure the row exists, then lock it: parallel requests for one email
+    # queue here instead of all reading "not locked" and racing past the limit.
+    # Without the insert, a brand-new email has no row and FOR UPDATE locks nothing.
+    s.execute(
+        insert(LoginAttempt)
+        .values(email=email, failed_count=0, first_failed_at=now())
+        .on_conflict_do_nothing(index_elements=[LoginAttempt.email])
+    )
+    attempt = s.scalar(
+        select(LoginAttempt)
+        .where(LoginAttempt.email == email)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if attempt and attempt.locked_until and attempt.locked_until > now():
+        seconds = max(1, math.ceil((attempt.locked_until - now()).total_seconds()))
+        minutes = math.ceil(seconds / 60)
+        raise HTTPException(
+            429,
+            f"Слишком много попыток, попробуйте через {minutes} {minutes_word(minutes)}",
+            headers={"Retry-After": str(seconds)},
+        )
+
+
+def record_failed_login(s, email):
+    # One atomic upsert: count +1, restart the count after the window,
+    # lock on the MAX_LOGIN_FAILURES-th failure inside the window.
+    t = now()
+    window_over = LoginAttempt.first_failed_at <= t - LOGIN_WINDOW
+    s.execute(
+        insert(LoginAttempt)
+        .values(email=email, failed_count=1, first_failed_at=t, locked_until=None)
+        .on_conflict_do_update(
+            index_elements=[LoginAttempt.email],
+            set_={
+                "failed_count": case(
+                    (window_over, 1), else_=LoginAttempt.failed_count + 1
+                ),
+                "first_failed_at": case(
+                    (window_over, t), else_=LoginAttempt.first_failed_at
+                ),
+                "locked_until": case(
+                    (
+                        and_(
+                            ~window_over,
+                            LoginAttempt.failed_count + 1 >= MAX_LOGIN_FAILURES,
+                        ),
+                        t + LOGIN_LOCK,
+                    ),
+                    else_=None,
+                ),
+            },
+        )
+    )
+
+
 @router.post("/auth/login")
 def login(data: Login, response: Response, s: Session = Depends(db)):
-    user = s.scalar(
-        select(User).where(User.email == data.email.strip().lower()).with_for_update()
-    )
+    email = data.email.strip().lower()
+    # Lock order user -> login_attempts, the same as password-reset confirm.
+    user = s.scalar(select(User).where(User.email == email).with_for_update())
+    check_not_locked(s, email)
     credential = s.get(Credential, user.id) if user else None
     # Perform a password derivation even when the account has no credential.
     valid = (
@@ -139,14 +210,7 @@ def login(data: Login, response: Response, s: Session = Depends(db)):
         else verify_password(data.password, "pbkdf2_sha256$600000$dummy$invalid")
     )
     if not valid:
-        s.execute(
-            insert(LoginAttempt).values(
-                email=data.email.strip().lower(), failed_count=1, first_failed_at=now(),
-            ).on_conflict_do_update(
-                index_elements=[LoginAttempt.email],
-                set_={"failed_count": LoginAttempt.failed_count + 1},
-            )
-        )
+        record_failed_login(s, email)
         # Persist failed attempts even though the HTTP request returns an error.
         s.commit()
         raise HTTPException(401, "Неверный email или пароль")
