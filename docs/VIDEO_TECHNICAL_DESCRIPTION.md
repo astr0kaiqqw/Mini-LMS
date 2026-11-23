@@ -97,3 +97,7 @@ ALTER TABLE lessons VALIDATE CONSTRAINT ck_lessons_youtube_url;
 | POST | `/api/lessons/{id}/watch` | Без изменений |
 | POST | `/api/lessons/{id}/complete` | Без изменений: для урока с видео 422 |
 
+## 7. Каталог
+
+120 видео, по одному на урок, 79 авторов, 21 ч 53 мин. Критерии K1–K7, процесс отбора и таблицы — в [LESSON_VIDEOS.md](LESSON_VIDEOS.md). Данные для кода — [`database/seeds/lesson_videos.py`](../database/seeds/lesson_videos.py): ID, точная длительность, автор, название.
+
